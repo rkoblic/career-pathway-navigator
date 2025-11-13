@@ -22,6 +22,8 @@ export default function CareerAssessmentTool() {
     linkedIn: ''
   });
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [editingSkill, setEditingSkill] = useState(null); // null or skill index
+  const [editFormData, setEditFormData] = useState(null); // skill data being edited
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -144,6 +146,36 @@ SKILLS
     setExpandedCategories(prev => ({
       ...prev,
       [category]: !prev[category]
+    }));
+  };
+
+  // Open edit modal for a skill
+  const openEditModal = (index) => {
+    setEditingSkill(index);
+    setEditFormData({ ...skills[index] });
+  };
+
+  // Close edit modal
+  const closeEditModal = () => {
+    setEditingSkill(null);
+    setEditFormData(null);
+  };
+
+  // Save edited skill
+  const saveEditedSkill = () => {
+    if (editingSkill !== null && editFormData) {
+      const updated = [...skills];
+      updated[editingSkill] = editFormData;
+      setSkills(updated);
+      closeEditModal();
+    }
+  };
+
+  // Update field in edit form
+  const updateEditForm = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
     }));
   };
 
@@ -1156,75 +1188,41 @@ Example format:
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
 
-                      {/* Category Content */}
+                      {/* Category Content - Chip Display */}
                       {isExpanded && (
                         <div className="p-4 bg-white">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-wrap gap-2">
                             {categorySkills.map((skill, idx) => {
                               const originalIndex = skills.findIndex(s =>
                                 s.name === skill.name && s.lightcastId === skill.lightcastId
                               );
 
+                              const getLevelAbbrev = (level) => {
+                                const abbrev = { 'Expert': 'E', 'Advanced': 'A', 'Intermediate': 'I', 'Beginner': 'B' };
+                                return abbrev[level] || '?';
+                              };
+
                               return (
-                                <div key={idx} className="border border-gray-200 rounded-lg p-3 hover:border-indigo-300 transition-colors">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div className="flex-1 flex items-center gap-2">
-                                      <input
-                                        type="text"
-                                        value={skill.name}
-                                        onChange={(e) => updateSkill(originalIndex, 'name', e.target.value)}
-                                        className="text-sm font-medium text-gray-800 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none flex-1"
-                                      />
-                                      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getLevelColor(skill.level)}`}>
-                                        {skill.level}
-                                      </span>
-                                    </div>
-                                    <button
-                                      onClick={() => removeSkill(originalIndex)}
-                                      className="text-red-500 hover:text-red-700 ml-2"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                  {skill.lightcastId && (
-                                    <div className="text-xs text-gray-500 mb-2 font-mono">
-                                      ID: {skill.lightcastId}
-                                    </div>
-                                  )}
-                                  <div className="flex gap-2 flex-wrap">
-                                    <select
-                                      value={skill.category}
-                                      onChange={(e) => updateSkill(originalIndex, 'category', e.target.value)}
-                                      className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    >
-                                      <option>Hard Skills</option>
-                                      <option>Soft Skills</option>
-                                      <option>Software and Applications</option>
-                                      <option>Specialized Skills</option>
-                                      <option>Certifications</option>
-                                    </select>
-                                    <select
-                                      value={skill.level}
-                                      onChange={(e) => updateSkill(originalIndex, 'level', e.target.value)}
-                                      className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    >
-                                      <option>Expert</option>
-                                      <option>Advanced</option>
-                                      <option>Intermediate</option>
-                                      <option>Beginner</option>
-                                    </select>
-                                    {skill.type && (
-                                      <select
-                                        value={skill.type}
-                                        onChange={(e) => updateSkill(originalIndex, 'type', e.target.value)}
-                                        className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                      >
-                                        <option>Specialized Knowledge</option>
-                                        <option>Core Competency</option>
-                                        <option>Common Skill</option>
-                                      </select>
-                                    )}
-                                  </div>
+                                <div
+                                  key={idx}
+                                  className="group relative inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-full hover:border-indigo-500 hover:shadow-md transition-all cursor-pointer"
+                                  onClick={() => openEditModal(originalIndex)}
+                                >
+                                  <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                                  <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${getLevelColor(skill.level)}`}>
+                                    {getLevelAbbrev(skill.level)}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Delete "${skill.name}"?`)) {
+                                        removeSkill(originalIndex);
+                                      }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                                  >
+                                    <X className="w-4 h-4 text-red-500 hover:text-red-700" />
+                                  </button>
                                 </div>
                               );
                             })}
@@ -1236,6 +1234,158 @@ Example format:
                 });
               })()}
             </div>
+
+            {/* Edit Skill Modal */}
+            {editingSkill !== null && editFormData && (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                onClick={closeEditModal}
+              >
+                <div
+                  className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') closeEditModal();
+                    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                      e.preventDefault();
+                      saveEditedSkill();
+                    }
+                  }}
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 className="text-xl font-bold text-gray-800">Edit Skill</h3>
+                    <button
+                      onClick={closeEditModal}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-6">
+                    {/* Skill Name */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Skill Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.name}
+                        onChange={(e) => updateEditForm('name', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Proficiency Level - PRIMARY EDIT */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Proficiency Level <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {['Expert', 'Advanced', 'Intermediate', 'Beginner'].map((level) => (
+                          <button
+                            key={level}
+                            onClick={() => updateEditForm('level', level)}
+                            className={`px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                              editFormData.level === level
+                                ? `${getLevelColor(level)} border-current`
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Additional Details - Collapsible */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3">Additional Details</h4>
+
+                      {/* Category */}
+                      <div className="mb-4">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Category
+                        </label>
+                        <select
+                          value={editFormData.category}
+                          onChange={(e) => updateEditForm('category', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                        >
+                          <option>Hard Skills</option>
+                          <option>Soft Skills</option>
+                          <option>Software and Applications</option>
+                          <option>Specialized Skills</option>
+                          <option>Certifications</option>
+                        </select>
+                      </div>
+
+                      {/* Type */}
+                      {editFormData.type && (
+                        <div className="mb-4">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Type
+                          </label>
+                          <select
+                            value={editFormData.type}
+                            onChange={(e) => updateEditForm('type', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                          >
+                            <option>Specialized Knowledge</option>
+                            <option>Core Competency</option>
+                            <option>Common Skill</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Lightcast ID - Read Only */}
+                      {editFormData.lightcastId && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Lightcast ID
+                          </label>
+                          <div className="text-sm text-gray-500 font-mono bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                            {editFormData.lightcastId}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete "${editFormData.name}"?`)) {
+                          removeSkill(editingSkill);
+                          closeEditModal();
+                        }
+                      }}
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+                    >
+                      Delete Skill
+                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={closeEditModal}
+                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={saveEditedSkill}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center">
