@@ -46,6 +46,26 @@ SKILLS
     setResumeText(sampleResume);
   };
 
+  // Helper function to extract JSON from Claude's response
+  const extractJSON = (text) => {
+    // Remove markdown code blocks
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+
+    // Try to find JSON array or object
+    const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    const objectMatch = cleaned.match(/\{\s*"[\s\S]*\}\s*$/);
+
+    if (arrayMatch) {
+      return arrayMatch[0];
+    } else if (objectMatch) {
+      return objectMatch[0];
+    }
+
+    // If no match, return cleaned text
+    return cleaned;
+  };
+
   // Handle file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -136,10 +156,24 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
       }
 
       const extractData = await extractResponse.json();
-      let rawSkillsText = extractData.content[0].text.trim();
-      rawSkillsText = rawSkillsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const rawSkills = JSON.parse(rawSkillsText);
-      
+      let rawSkillsText = extractData.content[0].text;
+
+      console.log('Raw API response (first 500 chars):', rawSkillsText.substring(0, 500));
+      console.log('Raw API response (last 200 chars):', rawSkillsText.substring(rawSkillsText.length - 200));
+
+      // Use helper to extract JSON
+      rawSkillsText = extractJSON(rawSkillsText);
+      console.log('Cleaned JSON string (first 500 chars):', rawSkillsText.substring(0, 500));
+
+      let rawSkills;
+      try {
+        rawSkills = JSON.parse(rawSkillsText);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Failed to parse text:', rawSkillsText);
+        throw new Error(`Failed to parse skills from response: ${parseError.message}`);
+      }
+
       console.log('Extracted raw skills:', rawSkills);
       console.log('Step 2: Mapping to Lightcast taxonomy...');
       
@@ -182,10 +216,23 @@ Return ONLY valid JSON array with no other text:
       }
 
       const mappingData = await mappingResponse.json();
-      let mappedSkillsText = mappingData.content[0].text.trim();
-      mappedSkillsText = mappedSkillsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const mappedSkills = JSON.parse(mappedSkillsText);
-      
+      let mappedSkillsText = mappingData.content[0].text;
+
+      console.log('Mapping response (first 500 chars):', mappedSkillsText.substring(0, 500));
+
+      // Use helper to extract JSON
+      mappedSkillsText = extractJSON(mappedSkillsText);
+      console.log('Cleaned mapping JSON (first 500 chars):', mappedSkillsText.substring(0, 500));
+
+      let mappedSkills;
+      try {
+        mappedSkills = JSON.parse(mappedSkillsText);
+      } catch (parseError) {
+        console.error('JSON Parse Error in mapping:', parseError);
+        console.error('Failed to parse mapping text:', mappedSkillsText);
+        throw new Error(`Failed to parse skill mapping from response: ${parseError.message}`);
+      }
+
       console.log('Mapped to Lightcast skills:', mappedSkills);
       
       if (Array.isArray(mappedSkills) && mappedSkills.length > 0) {
@@ -305,12 +352,23 @@ Example format:
       }
 
       const data = await response.json();
-      let responseText = data.content[0].text.trim();
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      console.log('Educational pathway response:', responseText);
-      
-      const pathway = JSON.parse(responseText);
+      let responseText = data.content[0].text;
+
+      console.log('Educational pathway response (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+
+      let pathway;
+      try {
+        pathway = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error in educational pathway:', parseError);
+        console.error('Failed to parse pathway text:', responseText);
+        throw new Error(`Failed to parse educational pathway: ${parseError.message}`);
+      }
+
+      console.log('Educational pathway parsed successfully:', pathway);
       
       setExpandedPathways(prev => ({
         ...prev,
@@ -422,12 +480,23 @@ Example format:
       }
 
       const data = await response.json();
-      let responseText = data.content[0].text.trim();
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      console.log('Job listings response:', responseText);
-      
-      const listings = JSON.parse(responseText);
+      let responseText = data.content[0].text;
+
+      console.log('Job listings response (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+
+      let listings;
+      try {
+        listings = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error in job listings:', parseError);
+        console.error('Failed to parse listings text:', responseText);
+        throw new Error(`Failed to parse job listings: ${parseError.message}`);
+      }
+
+      console.log('Job listings parsed successfully:', listings);
       
       setJobListings(prev => ({
         ...prev,
@@ -524,19 +593,28 @@ Example format:
 
       const data = await response.json();
       console.log('API Response data:', data);
-      
+
       if (!data.content || !data.content[0] || !data.content[0].text) {
         console.error('Invalid API response structure:', data);
         throw new Error('Invalid API response structure');
       }
-      
-      let responseText = data.content[0].text.trim();
-      console.log('Raw response text (first 200 chars):', responseText.substring(0, 200));
-      
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      console.log('Cleaned response text (first 200 chars):', responseText.substring(0, 200));
-      
-      const paths = JSON.parse(responseText);
+
+      let responseText = data.content[0].text;
+      console.log('Raw response text (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+      console.log('Cleaned response text (first 500 chars):', responseText.substring(0, 500));
+
+      let paths;
+      try {
+        paths = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error in career paths:', parseError);
+        console.error('Failed to parse career paths text:', responseText);
+        throw new Error(`Failed to parse career paths: ${parseError.message}`);
+      }
+
       console.log('Parsed career paths successfully');
       console.log('Number of paths:', paths.length);
       
