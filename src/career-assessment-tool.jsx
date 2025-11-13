@@ -442,13 +442,26 @@ Example format:
     }
   };
 
+  // Reset all state and go back to step 1
+  const handleStartOver = () => {
+    setStep(1);
+    setResumeText('');
+    setSkills([]);
+    setCareerPaths([]);
+    setNewSkill('');
+    setExpandedPathways({});
+    setJobListings({});
+    setLoadingPathway(null);
+    setLoadingJobs(null);
+  };
+
   // Generate career paths based on skills using Lightcast/O*NET matching
   const generateCareerPaths = async () => {
     console.log('=== generateCareerPaths CALLED ===');
     console.log('Current step:', step);
     console.log('Current skills:', skills);
     console.log('isProcessing before:', isProcessing);
-    
+
     setIsProcessing(true);
     console.log('isProcessing set to true');
     
@@ -786,13 +799,21 @@ Example format:
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Back
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleStartOver}
+                  className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  Start Over
+                </button>
+              </div>
               <button
                 onClick={generateCareerPaths}
                 disabled={isProcessing || skills.length === 0}
@@ -1260,7 +1281,7 @@ Example format:
               </div>
             ))}
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 onClick={() => {
                   setStep(2);
@@ -1269,6 +1290,12 @@ Example format:
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Refine Skills & Regenerate
+              </button>
+              <button
+                onClick={handleStartOver}
+                className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Start Over
               </button>
             </div>
           </div>
