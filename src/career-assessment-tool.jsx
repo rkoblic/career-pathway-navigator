@@ -186,34 +186,67 @@ SKILLS
     cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     cleaned = cleaned.replace(/```/g, '');
 
-    // Remove any text before the first [ or {
-    const jsonStart = Math.min(
-      cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : Infinity,
-      cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : Infinity
-    );
+    // Find the first { or [ to start JSON extraction
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
 
-    if (jsonStart !== Infinity && jsonStart > 0) {
-      cleaned = cleaned.substring(jsonStart);
+    let startChar = '';
+    let startIndex = -1;
+
+    // Determine which comes first - object or array
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      startChar = '{';
+      startIndex = firstBrace;
+    } else if (firstBracket !== -1) {
+      startChar = '[';
+      startIndex = firstBracket;
     }
 
-    // Remove any text after the last ] or }
-    const lastBracket = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'));
-    if (lastBracket !== -1 && lastBracket < cleaned.length - 1) {
-      cleaned = cleaned.substring(0, lastBracket + 1);
+    if (startIndex === -1) {
+      return cleaned; // No JSON found
     }
 
-    // Try to find and extract JSON array or object using balanced bracket matching
-    const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    const objectMatch = cleaned.match(/\{\s*"[\s\S]*\}/);
+    // Find matching closing bracket using a counter
+    const endChar = startChar === '{' ? '}' : ']';
+    let depth = 0;
+    let endIndex = -1;
+    let inString = false;
+    let escapeNext = false;
 
-    if (arrayMatch) {
-      return arrayMatch[0];
-    } else if (objectMatch) {
-      return objectMatch[0];
+    for (let i = startIndex; i < cleaned.length; i++) {
+      const char = cleaned[i];
+
+      // Handle string literals (ignore brackets inside strings)
+      if (char === '"' && !escapeNext) {
+        inString = !inString;
+      }
+
+      if (char === '\\' && !escapeNext) {
+        escapeNext = true;
+        continue;
+      }
+
+      escapeNext = false;
+
+      if (!inString) {
+        if (char === startChar) {
+          depth++;
+        } else if (char === endChar) {
+          depth--;
+          if (depth === 0) {
+            endIndex = i;
+            break;
+          }
+        }
+      }
     }
 
-    // If no match, return cleaned text
-    return cleaned;
+    if (endIndex !== -1) {
+      return cleaned.substring(startIndex, endIndex + 1);
+    }
+
+    // If we couldn't find the end, return what we have
+    return cleaned.substring(startIndex);
   };
 
   // Safe JSON parse with better error messages
