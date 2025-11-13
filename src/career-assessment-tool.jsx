@@ -46,6 +46,68 @@ SKILLS
     setResumeText(sampleResume);
   };
 
+  // Helper function to extract and sanitize JSON from Claude's response
+  const extractJSON = (text) => {
+    // Remove markdown code blocks
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    cleaned = cleaned.replace(/```/g, '');
+
+    // Remove any text before the first [ or {
+    const jsonStart = Math.min(
+      cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : Infinity,
+      cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : Infinity
+    );
+
+    if (jsonStart !== Infinity && jsonStart > 0) {
+      cleaned = cleaned.substring(jsonStart);
+    }
+
+    // Remove any text after the last ] or }
+    const lastBracket = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'));
+    if (lastBracket !== -1 && lastBracket < cleaned.length - 1) {
+      cleaned = cleaned.substring(0, lastBracket + 1);
+    }
+
+    // Try to find and extract JSON array or object using balanced bracket matching
+    const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    const objectMatch = cleaned.match(/\{\s*"[\s\S]*\}/);
+
+    if (arrayMatch) {
+      return arrayMatch[0];
+    } else if (objectMatch) {
+      return objectMatch[0];
+    }
+
+    // If no match, return cleaned text
+    return cleaned;
+  };
+
+  // Safe JSON parse with better error messages
+  const safeJSONParse = (text, context = 'unknown') => {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      console.error(`JSON Parse Error in ${context}:`, error);
+      console.error(`Failed text (first 1000 chars):`, text.substring(0, 1000));
+      console.error(`Failed text (around error position):`, text.substring(Math.max(0, error.message.match(/\d+/)?.[0] - 100 || 0), (error.message.match(/\d+/)?.[0] || 0) + 100));
+
+      // Try to identify the specific issue
+      const lines = text.split('\n');
+      console.error(`Total lines: ${lines.length}`);
+      if (error.message.includes('line')) {
+        const lineMatch = error.message.match(/line (\d+)/);
+        if (lineMatch) {
+          const lineNum = parseInt(lineMatch[1]) - 1;
+          console.error(`Problem at line ${lineNum + 1}:`, lines[lineNum]);
+          console.error(`Context:`, lines.slice(Math.max(0, lineNum - 2), Math.min(lines.length, lineNum + 3)));
+        }
+      }
+
+      throw new Error(`Failed to parse JSON in ${context}: ${error.message}`);
+    }
+  };
+
   // Handle file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -136,10 +198,16 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
       }
 
       const extractData = await extractResponse.json();
-      let rawSkillsText = extractData.content[0].text.trim();
-      rawSkillsText = rawSkillsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const rawSkills = JSON.parse(rawSkillsText);
-      
+      let rawSkillsText = extractData.content[0].text;
+
+      console.log('Raw API response (first 500 chars):', rawSkillsText.substring(0, 500));
+      console.log('Raw API response (last 200 chars):', rawSkillsText.substring(rawSkillsText.length - 200));
+
+      // Use helper to extract JSON
+      rawSkillsText = extractJSON(rawSkillsText);
+      console.log('Cleaned JSON string (first 500 chars):', rawSkillsText.substring(0, 500));
+
+      const rawSkills = safeJSONParse(rawSkillsText, 'skill extraction');
       console.log('Extracted raw skills:', rawSkills);
       console.log('Step 2: Mapping to Lightcast taxonomy...');
       
@@ -151,7 +219,7 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
+          max_tokens: 8000,
           messages: [{
             role: 'user',
             content: `Map these skills to the Lightcast (formerly Emsi Burning Glass) skills taxonomy. For each skill, provide:
@@ -182,10 +250,37 @@ Return ONLY valid JSON array with no other text:
       }
 
       const mappingData = await mappingResponse.json();
-      let mappedSkillsText = mappingData.content[0].text.trim();
-      mappedSkillsText = mappedSkillsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const mappedSkills = JSON.parse(mappedSkillsText);
-      
+
+      // Validate response structure
+      if (!mappingData || !mappingData.content || !mappingData.content[0] || !mappingData.content[0].text) {
+        console.error('Invalid mapping response structure:', mappingData);
+        throw new Error('Invalid API response structure for Lightcast mapping');
+      }
+
+      let mappedSkillsText = mappingData.content[0].text;
+
+      console.log('Mapping response length:', mappedSkillsText.length);
+      console.log('Mapping response (first 500 chars):', mappedSkillsText.substring(0, 500));
+      console.log('Mapping response (last 200 chars):', mappedSkillsText.substring(Math.max(0, mappedSkillsText.length - 200)));
+
+      // Check if response is empty
+      if (!mappedSkillsText || mappedSkillsText.trim().length === 0) {
+        console.error('Empty response from Lightcast mapping API');
+        throw new Error('Received empty response from Lightcast mapping API. This might be due to too many skills or API limits.');
+      }
+
+      // Use helper to extract JSON
+      mappedSkillsText = extractJSON(mappedSkillsText);
+      console.log('Cleaned mapping JSON length:', mappedSkillsText.length);
+      console.log('Cleaned mapping JSON (first 500 chars):', mappedSkillsText.substring(0, 500));
+
+      // Check if cleaned response is empty
+      if (!mappedSkillsText || mappedSkillsText.trim().length === 0) {
+        console.error('Empty JSON after cleaning');
+        throw new Error('Unable to extract valid JSON from Lightcast mapping response');
+      }
+
+      const mappedSkills = safeJSONParse(mappedSkillsText, 'Lightcast mapping');
       console.log('Mapped to Lightcast skills:', mappedSkills);
       
       if (Array.isArray(mappedSkills) && mappedSkills.length > 0) {
@@ -305,12 +400,15 @@ Example format:
       }
 
       const data = await response.json();
-      let responseText = data.content[0].text.trim();
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      console.log('Educational pathway response:', responseText);
-      
-      const pathway = JSON.parse(responseText);
+      let responseText = data.content[0].text;
+
+      console.log('Educational pathway response (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+
+      const pathway = safeJSONParse(responseText, 'educational pathway');
+      console.log('Educational pathway parsed successfully:', pathway);
       
       setExpandedPathways(prev => ({
         ...prev,
@@ -422,12 +520,15 @@ Example format:
       }
 
       const data = await response.json();
-      let responseText = data.content[0].text.trim();
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      console.log('Job listings response:', responseText);
-      
-      const listings = JSON.parse(responseText);
+      let responseText = data.content[0].text;
+
+      console.log('Job listings response (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+
+      const listings = safeJSONParse(responseText, 'job listings');
+      console.log('Job listings parsed successfully:', listings);
       
       setJobListings(prev => ({
         ...prev,
@@ -442,13 +543,26 @@ Example format:
     }
   };
 
+  // Reset all state and go back to step 1
+  const handleStartOver = () => {
+    setStep(1);
+    setResumeText('');
+    setSkills([]);
+    setCareerPaths([]);
+    setNewSkill('');
+    setExpandedPathways({});
+    setJobListings({});
+    setLoadingPathway(null);
+    setLoadingJobs(null);
+  };
+
   // Generate career paths based on skills using Lightcast/O*NET matching
   const generateCareerPaths = async () => {
     console.log('=== generateCareerPaths CALLED ===');
     console.log('Current step:', step);
     console.log('Current skills:', skills);
     console.log('isProcessing before:', isProcessing);
-    
+
     setIsProcessing(true);
     console.log('isProcessing set to true');
     
@@ -511,19 +625,20 @@ Example format:
 
       const data = await response.json();
       console.log('API Response data:', data);
-      
+
       if (!data.content || !data.content[0] || !data.content[0].text) {
         console.error('Invalid API response structure:', data);
         throw new Error('Invalid API response structure');
       }
-      
-      let responseText = data.content[0].text.trim();
-      console.log('Raw response text (first 200 chars):', responseText.substring(0, 200));
-      
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      console.log('Cleaned response text (first 200 chars):', responseText.substring(0, 200));
-      
-      const paths = JSON.parse(responseText);
+
+      let responseText = data.content[0].text;
+      console.log('Raw response text (first 500 chars):', responseText.substring(0, 500));
+
+      // Use helper to extract JSON
+      responseText = extractJSON(responseText);
+      console.log('Cleaned response text (first 500 chars):', responseText.substring(0, 500));
+
+      const paths = safeJSONParse(responseText, 'career paths');
       console.log('Parsed career paths successfully');
       console.log('Number of paths:', paths.length);
       
@@ -786,13 +901,21 @@ Example format:
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Back
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleStartOver}
+                  className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  Start Over
+                </button>
+              </div>
               <button
                 onClick={generateCareerPaths}
                 disabled={isProcessing || skills.length === 0}
@@ -1260,7 +1383,7 @@ Example format:
               </div>
             ))}
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 onClick={() => {
                   setStep(2);
@@ -1269,6 +1392,12 @@ Example format:
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Refine Skills & Regenerate
+              </button>
+              <button
+                onClick={handleStartOver}
+                className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Start Over
               </button>
             </div>
           </div>
