@@ -1045,63 +1045,61 @@ Example format:
             </div>
 
             {/* Contact Information Fields */}
-            {(contactInfo.name || contactInfo.phone || contactInfo.email || contactInfo.city || contactInfo.linkedIn) && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={contactInfo.name}
-                      onChange={(e) => updateContactInfo('name', e.target.value)}
-                      placeholder="Full Name"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={contactInfo.email}
-                      onChange={(e) => updateContactInfo('email', e.target.value)}
-                      placeholder="email@example.com"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={contactInfo.phone}
-                      onChange={(e) => updateContactInfo('phone', e.target.value)}
-                      placeholder="(123) 456-7890"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">City/Location</label>
-                    <input
-                      type="text"
-                      value={contactInfo.city}
-                      onChange={(e) => updateContactInfo('city', e.target.value)}
-                      placeholder="City, State"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">LinkedIn URL</label>
-                    <input
-                      type="url"
-                      value={contactInfo.linkedIn}
-                      onChange={(e) => updateContactInfo('linkedIn', e.target.value)}
-                      placeholder="https://linkedin.com/in/username"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={contactInfo.name}
+                    onChange={(e) => updateContactInfo('name', e.target.value)}
+                    placeholder="Full Name"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={contactInfo.email}
+                    onChange={(e) => updateContactInfo('email', e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={contactInfo.phone}
+                    onChange={(e) => updateContactInfo('phone', e.target.value)}
+                    placeholder="(123) 456-7890"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">City/Location</label>
+                  <input
+                    type="text"
+                    value={contactInfo.city}
+                    onChange={(e) => updateContactInfo('city', e.target.value)}
+                    placeholder="City, State"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">LinkedIn URL</label>
+                  <input
+                    type="url"
+                    value={contactInfo.linkedIn}
+                    onChange={(e) => updateContactInfo('linkedIn', e.target.value)}
+                    placeholder="https://linkedin.com/in/username"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
               </div>
-            )}
+            </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
