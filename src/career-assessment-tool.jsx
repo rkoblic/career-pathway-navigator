@@ -407,7 +407,7 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 8000,
+          max_tokens: 10000,
           messages: [{
             role: 'user',
             content: `Map these skills to the Lightcast (formerly Emsi Burning Glass) skills taxonomy. For each skill, provide:
@@ -416,9 +416,22 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
 - "category": Skill type (Hard Skills, Soft Skills, Software and Applications, Specialized Skills, or Certifications)
 - "level": Proficiency level based on context (Beginner, Intermediate, Advanced, Expert)
 - "type": Lightcast skill type (Specialized Knowledge, Core Competency, or Common Skill)
+- "definition": Brief Lightcast-style skill definition (1-2 sentences describing what this skill entails)
+- "evidence": The EXACT text from the resume that led to identifying this skill (quote verbatim, keep under 100 characters)
+- "confidence": Confidence score (0-100) indicating certainty of this skill inference
+
+Confidence Scoring Guidelines:
+- 90-100: Skill explicitly stated with context (e.g., "5+ years of Python development")
+- 70-89: Skill directly mentioned in skills list or experience
+- 50-69: Skill strongly implied by related work or tools mentioned
+- 30-49: Skill inferred from related competencies or responsibilities
+- 0-29: Weak inference or tangential connection
 
 Skills to map:
 ${JSON.stringify(rawSkills)}
+
+Resume text for evidence extraction:
+${text.substring(0, 3000)}
 
 Use actual Lightcast taxonomy conventions. Common examples:
 - JavaScript → "JavaScript (Programming Language)" [KS125LS6N7WL4S6JWKHS]
@@ -428,7 +441,16 @@ Use actual Lightcast taxonomy conventions. Common examples:
 - Leadership → "Leadership" [KS125QD6K0QLLCS5GZ0Q]
 
 Return ONLY valid JSON array with no other text:
-[{"name": "JavaScript (Programming Language)", "lightcastId": "KS125LS6N7WL4S6JWKHS", "category": "Software and Applications", "level": "Advanced", "type": "Specialized Knowledge"}]`
+[{
+  "name": "JavaScript (Programming Language)",
+  "lightcastId": "KS125LS6N7WL4S6JWKHS",
+  "category": "Software and Applications",
+  "level": "Advanced",
+  "type": "Specialized Knowledge",
+  "definition": "A high-level, interpreted programming language used for web development, featuring dynamic typing and first-class functions.",
+  "evidence": "Led team building React web applications",
+  "confidence": 92
+}]`
           }]
         })
       });
@@ -488,12 +510,15 @@ Return ONLY valid JSON array with no other text:
   // Add a new skill
   const addSkill = () => {
     if (newSkill.trim()) {
-      setSkills([...skills, { 
-        name: newSkill.trim(), 
+      setSkills([...skills, {
+        name: newSkill.trim(),
         lightcastId: 'KS' + Math.random().toString(36).substr(2, 18).toUpperCase(),
-        category: 'Hard Skills', 
+        category: 'Hard Skills',
         level: 'Intermediate',
-        type: 'Core Competency'
+        type: 'Core Competency',
+        definition: '',
+        evidence: 'Manually added',
+        confidence: 50
       }]);
       setNewSkill('');
     }
@@ -1300,6 +1325,68 @@ Example format:
                         ))}
                       </div>
                     </div>
+
+                    {/* Skill Definition */}
+                    {editFormData.definition && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Skill Definition
+                        </label>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-gray-700">
+                          {editFormData.definition}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evidence from Resume */}
+                    {editFormData.evidence && editFormData.evidence !== 'Manually added' && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Evidence from Resume
+                        </label>
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-gray-600 italic">
+                          "{editFormData.evidence}"
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Confidence Score */}
+                    {editFormData.confidence !== undefined && editFormData.confidence !== null && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          AI Confidence Score
+                        </label>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Confidence in this skill assessment</span>
+                            <span className="font-bold text-gray-800">{editFormData.confidence}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                editFormData.confidence >= 90
+                                  ? 'bg-green-500'
+                                  : editFormData.confidence >= 70
+                                  ? 'bg-blue-500'
+                                  : editFormData.confidence >= 50
+                                  ? 'bg-yellow-500'
+                                  : editFormData.confidence >= 30
+                                  ? 'bg-orange-500'
+                                  : 'bg-red-500'
+                              }`}
+                              style={{ width: `${editFormData.confidence}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {editFormData.confidence >= 90 && 'Very High - Explicitly stated with context'}
+                            {editFormData.confidence >= 70 && editFormData.confidence < 90 && 'High - Directly mentioned in resume'}
+                            {editFormData.confidence >= 50 && editFormData.confidence < 70 && 'Medium - Strongly implied by experience'}
+                            {editFormData.confidence >= 30 && editFormData.confidence < 50 && 'Low - Inferred from related skills'}
+                            {editFormData.confidence < 30 && 'Very Low - Weak inference'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Additional Details - Collapsible */}
                     <div className="pt-4 border-t border-gray-200">
