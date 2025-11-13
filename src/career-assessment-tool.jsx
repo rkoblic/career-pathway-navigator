@@ -46,15 +46,32 @@ SKILLS
     setResumeText(sampleResume);
   };
 
-  // Helper function to extract JSON from Claude's response
+  // Helper function to extract and sanitize JSON from Claude's response
   const extractJSON = (text) => {
     // Remove markdown code blocks
     let cleaned = text.trim();
     cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    cleaned = cleaned.replace(/```/g, '');
 
-    // Try to find JSON array or object
+    // Remove any text before the first [ or {
+    const jsonStart = Math.min(
+      cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : Infinity,
+      cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : Infinity
+    );
+
+    if (jsonStart !== Infinity && jsonStart > 0) {
+      cleaned = cleaned.substring(jsonStart);
+    }
+
+    // Remove any text after the last ] or }
+    const lastBracket = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'));
+    if (lastBracket !== -1 && lastBracket < cleaned.length - 1) {
+      cleaned = cleaned.substring(0, lastBracket + 1);
+    }
+
+    // Try to find and extract JSON array or object using balanced bracket matching
     const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    const objectMatch = cleaned.match(/\{\s*"[\s\S]*\}\s*$/);
+    const objectMatch = cleaned.match(/\{\s*"[\s\S]*\}/);
 
     if (arrayMatch) {
       return arrayMatch[0];
@@ -64,6 +81,31 @@ SKILLS
 
     // If no match, return cleaned text
     return cleaned;
+  };
+
+  // Safe JSON parse with better error messages
+  const safeJSONParse = (text, context = 'unknown') => {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      console.error(`JSON Parse Error in ${context}:`, error);
+      console.error(`Failed text (first 1000 chars):`, text.substring(0, 1000));
+      console.error(`Failed text (around error position):`, text.substring(Math.max(0, error.message.match(/\d+/)?.[0] - 100 || 0), (error.message.match(/\d+/)?.[0] || 0) + 100));
+
+      // Try to identify the specific issue
+      const lines = text.split('\n');
+      console.error(`Total lines: ${lines.length}`);
+      if (error.message.includes('line')) {
+        const lineMatch = error.message.match(/line (\d+)/);
+        if (lineMatch) {
+          const lineNum = parseInt(lineMatch[1]) - 1;
+          console.error(`Problem at line ${lineNum + 1}:`, lines[lineNum]);
+          console.error(`Context:`, lines.slice(Math.max(0, lineNum - 2), Math.min(lines.length, lineNum + 3)));
+        }
+      }
+
+      throw new Error(`Failed to parse JSON in ${context}: ${error.message}`);
+    }
   };
 
   // Handle file upload
@@ -165,15 +207,7 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
       rawSkillsText = extractJSON(rawSkillsText);
       console.log('Cleaned JSON string (first 500 chars):', rawSkillsText.substring(0, 500));
 
-      let rawSkills;
-      try {
-        rawSkills = JSON.parse(rawSkillsText);
-      } catch (parseError) {
-        console.error('JSON Parse Error:', parseError);
-        console.error('Failed to parse text:', rawSkillsText);
-        throw new Error(`Failed to parse skills from response: ${parseError.message}`);
-      }
-
+      const rawSkills = safeJSONParse(rawSkillsText, 'skill extraction');
       console.log('Extracted raw skills:', rawSkills);
       console.log('Step 2: Mapping to Lightcast taxonomy...');
       
@@ -224,15 +258,7 @@ Return ONLY valid JSON array with no other text:
       mappedSkillsText = extractJSON(mappedSkillsText);
       console.log('Cleaned mapping JSON (first 500 chars):', mappedSkillsText.substring(0, 500));
 
-      let mappedSkills;
-      try {
-        mappedSkills = JSON.parse(mappedSkillsText);
-      } catch (parseError) {
-        console.error('JSON Parse Error in mapping:', parseError);
-        console.error('Failed to parse mapping text:', mappedSkillsText);
-        throw new Error(`Failed to parse skill mapping from response: ${parseError.message}`);
-      }
-
+      const mappedSkills = safeJSONParse(mappedSkillsText, 'Lightcast mapping');
       console.log('Mapped to Lightcast skills:', mappedSkills);
       
       if (Array.isArray(mappedSkills) && mappedSkills.length > 0) {
@@ -359,15 +385,7 @@ Example format:
       // Use helper to extract JSON
       responseText = extractJSON(responseText);
 
-      let pathway;
-      try {
-        pathway = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON Parse Error in educational pathway:', parseError);
-        console.error('Failed to parse pathway text:', responseText);
-        throw new Error(`Failed to parse educational pathway: ${parseError.message}`);
-      }
-
+      const pathway = safeJSONParse(responseText, 'educational pathway');
       console.log('Educational pathway parsed successfully:', pathway);
       
       setExpandedPathways(prev => ({
@@ -487,15 +505,7 @@ Example format:
       // Use helper to extract JSON
       responseText = extractJSON(responseText);
 
-      let listings;
-      try {
-        listings = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON Parse Error in job listings:', parseError);
-        console.error('Failed to parse listings text:', responseText);
-        throw new Error(`Failed to parse job listings: ${parseError.message}`);
-      }
-
+      const listings = safeJSONParse(responseText, 'job listings');
       console.log('Job listings parsed successfully:', listings);
       
       setJobListings(prev => ({
@@ -606,15 +616,7 @@ Example format:
       responseText = extractJSON(responseText);
       console.log('Cleaned response text (first 500 chars):', responseText.substring(0, 500));
 
-      let paths;
-      try {
-        paths = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON Parse Error in career paths:', parseError);
-        console.error('Failed to parse career paths text:', responseText);
-        throw new Error(`Failed to parse career paths: ${parseError.message}`);
-      }
-
+      const paths = safeJSONParse(responseText, 'career paths');
       console.log('Parsed career paths successfully');
       console.log('Number of paths:', paths.length);
       
