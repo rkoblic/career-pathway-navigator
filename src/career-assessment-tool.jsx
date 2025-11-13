@@ -630,7 +630,30 @@ Example format:
 
       const pathway = safeJSONParse(responseText, 'educational pathway');
       console.log('Educational pathway parsed successfully:', pathway);
-      
+
+      // Comprehensive debugging
+      console.log('=== EDUCATIONAL PATHWAY DEBUG ===');
+      console.log('Full pathway object:', JSON.stringify(pathway, null, 2));
+      console.log('Has timeline?', pathway?.hasOwnProperty('timeline'), '→', pathway?.timeline);
+      console.log('Has difficulty?', pathway?.hasOwnProperty('difficulty'), '→', pathway?.difficulty);
+      console.log('Has learningSteps?', pathway?.hasOwnProperty('learningSteps'));
+      console.log('learningSteps is array?', Array.isArray(pathway?.learningSteps));
+      console.log('learningSteps length:', pathway?.learningSteps?.length);
+      if (pathway?.learningSteps) {
+        console.log('First learning step:', pathway.learningSteps[0]);
+      }
+      console.log('=== END DEBUG ===');
+
+      // Validate critical fields
+      if (!pathway || typeof pathway !== 'object') {
+        console.error('❌ Educational pathway is not a valid object');
+        throw new Error('Invalid educational pathway data structure');
+      }
+      if (!Array.isArray(pathway.learningSteps) || pathway.learningSteps.length === 0) {
+        console.warn('⚠️ Educational pathway missing learningSteps array or it is empty');
+        console.warn('This will result in an empty display. Check API response structure.');
+      }
+
       setExpandedPathways(prev => ({
         ...prev,
         [careerIndex]: pathway
@@ -778,7 +801,41 @@ Example format:
 
       const listings = safeJSONParse(responseText, 'job listings');
       console.log('Job listings parsed successfully:', listings);
-      
+
+      // Comprehensive debugging
+      console.log('=== JOB LISTINGS DEBUG ===');
+      console.log('Full listings object:', JSON.stringify(listings, null, 2));
+      console.log('Has totalEstimate?', listings?.hasOwnProperty('totalEstimate'), '→', listings?.totalEstimate);
+      console.log('Has remotePercentage?', listings?.hasOwnProperty('remotePercentage'), '→', listings?.remotePercentage);
+      console.log('Has averageSalary?', listings?.hasOwnProperty('averageSalary'), '→', listings?.averageSalary);
+      console.log('Has topCompanies?', listings?.hasOwnProperty('topCompanies'));
+      console.log('topCompanies is array?', Array.isArray(listings?.topCompanies));
+      console.log('topCompanies length:', listings?.topCompanies?.length);
+      console.log('Has sampleListings?', listings?.hasOwnProperty('sampleListings'));
+      console.log('sampleListings is array?', Array.isArray(listings?.sampleListings));
+      console.log('sampleListings length:', listings?.sampleListings?.length);
+      console.log('Has insights?', listings?.hasOwnProperty('insights'));
+      if (listings?.insights) {
+        console.log('Insights:', listings.insights);
+      }
+      if (listings?.sampleListings?.[0]) {
+        console.log('First sample listing:', listings.sampleListings[0]);
+      }
+      console.log('=== END DEBUG ===');
+
+      // Validate critical fields
+      if (!listings || typeof listings !== 'object') {
+        console.error('❌ Job listings is not a valid object');
+        throw new Error('Invalid job listings data structure');
+      }
+      if (!Array.isArray(listings.sampleListings) || listings.sampleListings.length === 0) {
+        console.warn('⚠️ Job listings missing sampleListings array or it is empty');
+        console.warn('This will result in an empty or incomplete display.');
+      }
+      if (!Array.isArray(listings.topCompanies) || listings.topCompanies.length === 0) {
+        console.warn('⚠️ Job listings missing topCompanies array or it is empty');
+      }
+
       setJobListings(prev => ({
         ...prev,
         [careerIndex]: listings
@@ -1704,7 +1761,7 @@ Example format:
                         </div>
 
                         {/* Learning Steps */}
-                        {Array.isArray(expandedPathways[index].learningSteps) && (
+                        {Array.isArray(expandedPathways[index].learningSteps) && expandedPathways[index].learningSteps.length > 0 ? (
                           <div className="space-y-4">
                             {expandedPathways[index].learningSteps.map((step, stepIdx) => (
                               <div key={stepIdx} className="bg-white rounded-lg p-5 shadow-sm border border-purple-100">
@@ -1799,6 +1856,11 @@ Example format:
                                 )}
                               </div>
                             ))}
+                          </div>
+                        ) : (
+                          <div className="bg-white rounded-lg p-6 border border-purple-200 text-center">
+                            <p className="text-gray-600 mb-2">Unable to load learning pathway data.</p>
+                            <p className="text-sm text-gray-500">Please check the browser console for details or try clicking the button again.</p>
                           </div>
                         )}
                       </div>
@@ -1910,7 +1972,7 @@ Example format:
                       )}
 
                       {/* Sample Job Listings */}
-                      {Array.isArray(jobListings[index].sampleListings) && jobListings[index].sampleListings.length > 0 && (
+                      {Array.isArray(jobListings[index].sampleListings) && jobListings[index].sampleListings.length > 0 ? (
                         <div>
                           <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                             <Briefcase className="w-4 h-4" />
@@ -2003,6 +2065,11 @@ Example format:
                               </a>
                             </p>
                           </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-lg p-6 border border-green-200 text-center mt-4">
+                          <p className="text-gray-600 mb-2">Unable to load job listings data.</p>
+                          <p className="text-sm text-gray-500">Please check the browser console for details or try clicking the button again.</p>
                         </div>
                       )}
                     </div>
