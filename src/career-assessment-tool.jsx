@@ -219,7 +219,7 @@ IMPORTANT: Return ONLY a JSON array of skill name strings, with no markdown, no 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
+          max_tokens: 8000,
           messages: [{
             role: 'user',
             content: `Map these skills to the Lightcast (formerly Emsi Burning Glass) skills taxonomy. For each skill, provide:
@@ -250,13 +250,35 @@ Return ONLY valid JSON array with no other text:
       }
 
       const mappingData = await mappingResponse.json();
+
+      // Validate response structure
+      if (!mappingData || !mappingData.content || !mappingData.content[0] || !mappingData.content[0].text) {
+        console.error('Invalid mapping response structure:', mappingData);
+        throw new Error('Invalid API response structure for Lightcast mapping');
+      }
+
       let mappedSkillsText = mappingData.content[0].text;
 
+      console.log('Mapping response length:', mappedSkillsText.length);
       console.log('Mapping response (first 500 chars):', mappedSkillsText.substring(0, 500));
+      console.log('Mapping response (last 200 chars):', mappedSkillsText.substring(Math.max(0, mappedSkillsText.length - 200)));
+
+      // Check if response is empty
+      if (!mappedSkillsText || mappedSkillsText.trim().length === 0) {
+        console.error('Empty response from Lightcast mapping API');
+        throw new Error('Received empty response from Lightcast mapping API. This might be due to too many skills or API limits.');
+      }
 
       // Use helper to extract JSON
       mappedSkillsText = extractJSON(mappedSkillsText);
+      console.log('Cleaned mapping JSON length:', mappedSkillsText.length);
       console.log('Cleaned mapping JSON (first 500 chars):', mappedSkillsText.substring(0, 500));
+
+      // Check if cleaned response is empty
+      if (!mappedSkillsText || mappedSkillsText.trim().length === 0) {
+        console.error('Empty JSON after cleaning');
+        throw new Error('Unable to extract valid JSON from Lightcast mapping response');
+      }
 
       const mappedSkills = safeJSONParse(mappedSkillsText, 'Lightcast mapping');
       console.log('Mapped to Lightcast skills:', mappedSkills);
