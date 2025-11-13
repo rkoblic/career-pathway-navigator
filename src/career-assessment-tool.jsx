@@ -21,6 +21,7 @@ export default function CareerAssessmentTool() {
     city: '',
     linkedIn: ''
   });
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -69,6 +70,80 @@ SKILLS
     setContactInfo(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  // Helper function to get level order for sorting
+  const getLevelOrder = (level) => {
+    const order = { 'Expert': 0, 'Advanced': 1, 'Intermediate': 2, 'Beginner': 3 };
+    return order[level] !== undefined ? order[level] : 4;
+  };
+
+  // Helper function to get level badge colors
+  const getLevelColor = (level) => {
+    const colors = {
+      'Expert': 'bg-purple-100 text-purple-800 border-purple-200',
+      'Advanced': 'bg-green-100 text-green-800 border-green-200',
+      'Intermediate': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Beginner': 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+    return colors[level] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
+  // Group skills by category and sort by level within each category
+  const groupSkillsByCategory = () => {
+    const grouped = {};
+    const categories = ['Hard Skills', 'Soft Skills', 'Software and Applications', 'Specialized Skills', 'Certifications'];
+
+    // Initialize all categories
+    categories.forEach(cat => {
+      grouped[cat] = [];
+    });
+
+    // Group skills
+    skills.forEach(skill => {
+      const category = skill.category || 'Hard Skills';
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(skill);
+    });
+
+    // Sort skills within each category by level (Expert to Beginner)
+    Object.keys(grouped).forEach(category => {
+      grouped[category].sort((a, b) => getLevelOrder(a.level) - getLevelOrder(b.level));
+    });
+
+    return grouped;
+  };
+
+  // Calculate skill statistics
+  const getSkillStats = () => {
+    const stats = {
+      total: skills.length,
+      byLevel: { 'Expert': 0, 'Advanced': 0, 'Intermediate': 0, 'Beginner': 0 },
+      byCategory: {}
+    };
+
+    skills.forEach(skill => {
+      // Count by level
+      if (skill.level && stats.byLevel[skill.level] !== undefined) {
+        stats.byLevel[skill.level]++;
+      }
+
+      // Count by category
+      const category = skill.category || 'Hard Skills';
+      stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
+    });
+
+    return stats;
+  };
+
+  // Toggle category expansion
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
     }));
   };
 
@@ -966,13 +1041,48 @@ Example format:
         {/* Step 2: Review and Edit Skills */}
         {step === 2 && (
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Review Your Skills</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Review Your Skills</h2>
             <p className="text-gray-600 mb-2">
               We've identified {skills.length} skills from your resume and mapped them to the Lightcast skills taxonomy.
             </p>
             <p className="text-sm text-gray-500 mb-6">
               Lightcast (formerly Emsi Burning Glass) provides standardized skill names and IDs used by employers and educators worldwide. Review, edit, or add more skills below.
             </p>
+
+            {/* Summary Dashboard */}
+            {(() => {
+              const stats = getSkillStats();
+              return (
+                <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Skill Overview</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                      <div className="text-xs text-gray-600 mb-1">Expert</div>
+                      <div className="text-2xl font-bold text-purple-600">{stats.byLevel['Expert']}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                      <div className="text-xs text-gray-600 mb-1">Advanced</div>
+                      <div className="text-2xl font-bold text-green-600">{stats.byLevel['Advanced']}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-200">
+                      <div className="text-xs text-gray-600 mb-1">Intermediate</div>
+                      <div className="text-2xl font-bold text-blue-600">{stats.byLevel['Intermediate']}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-600 mb-1">Beginner</div>
+                      <div className="text-2xl font-bold text-gray-600">{stats.byLevel['Beginner']}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(stats.byCategory).map(([category, count]) => (
+                      <span key={category} className="text-xs bg-white px-2 py-1 rounded border border-indigo-200 text-gray-700">
+                        {category}: <span className="font-semibold">{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Add New Skill */}
             <div className="mb-6 flex gap-2">
@@ -993,67 +1103,138 @@ Example format:
               </button>
             </div>
 
-            {/* Skills Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 max-h-96 overflow-y-auto">
-              {skills.map((skill, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={skill.name}
-                        onChange={(e) => updateSkill(index, 'name', e.target.value)}
-                        className="font-semibold text-gray-800 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none w-full"
-                      />
-                      {skill.lightcastId && (
-                        <div className="text-xs text-gray-500 mt-1 font-mono">
-                          ID: {skill.lightcastId}
+            {/* Collapsible Category Sections */}
+            <div className="space-y-4 mb-6">
+              {(() => {
+                const grouped = groupSkillsByCategory();
+                const categories = ['Hard Skills', 'Soft Skills', 'Software and Applications', 'Specialized Skills', 'Certifications'];
+
+                return categories.map(category => {
+                  const categorySkills = grouped[category] || [];
+                  if (categorySkills.length === 0) return null;
+
+                  const isExpanded = expandedCategories[category];
+                  const levelCounts = categorySkills.reduce((acc, skill) => {
+                    acc[skill.level] = (acc[skill.level] || 0) + 1;
+                    return acc;
+                  }, {});
+
+                  return (
+                    <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Category Header */}
+                      <button
+                        onClick={() => toggleCategory(category)}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-gray-800">
+                            {category} ({categorySkills.length})
+                          </span>
+                          <div className="flex gap-1">
+                            {levelCounts['Expert'] > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                                {levelCounts['Expert']} Expert
+                              </span>
+                            )}
+                            {levelCounts['Advanced'] > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">
+                                {levelCounts['Advanced']} Adv
+                              </span>
+                            )}
+                            {levelCounts['Intermediate'] > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                                {levelCounts['Intermediate']} Int
+                              </span>
+                            )}
+                            {levelCounts['Beginner'] > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">
+                                {levelCounts['Beginner']} Beg
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </button>
+
+                      {/* Category Content */}
+                      {isExpanded && (
+                        <div className="p-4 bg-white">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {categorySkills.map((skill, idx) => {
+                              const originalIndex = skills.findIndex(s =>
+                                s.name === skill.name && s.lightcastId === skill.lightcastId
+                              );
+
+                              return (
+                                <div key={idx} className="border border-gray-200 rounded-lg p-3 hover:border-indigo-300 transition-colors">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1 flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={skill.name}
+                                        onChange={(e) => updateSkill(originalIndex, 'name', e.target.value)}
+                                        className="text-sm font-medium text-gray-800 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none flex-1"
+                                      />
+                                      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getLevelColor(skill.level)}`}>
+                                        {skill.level}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => removeSkill(originalIndex)}
+                                      className="text-red-500 hover:text-red-700 ml-2"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  {skill.lightcastId && (
+                                    <div className="text-xs text-gray-500 mb-2 font-mono">
+                                      ID: {skill.lightcastId}
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2 flex-wrap">
+                                    <select
+                                      value={skill.category}
+                                      onChange={(e) => updateSkill(originalIndex, 'category', e.target.value)}
+                                      className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      <option>Hard Skills</option>
+                                      <option>Soft Skills</option>
+                                      <option>Software and Applications</option>
+                                      <option>Specialized Skills</option>
+                                      <option>Certifications</option>
+                                    </select>
+                                    <select
+                                      value={skill.level}
+                                      onChange={(e) => updateSkill(originalIndex, 'level', e.target.value)}
+                                      className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      <option>Expert</option>
+                                      <option>Advanced</option>
+                                      <option>Intermediate</option>
+                                      <option>Beginner</option>
+                                    </select>
+                                    {skill.type && (
+                                      <select
+                                        value={skill.type}
+                                        onChange={(e) => updateSkill(originalIndex, 'type', e.target.value)}
+                                        className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                      >
+                                        <option>Specialized Knowledge</option>
+                                        <option>Core Competency</option>
+                                        <option>Common Skill</option>
+                                      </select>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => removeSkill(index)}
-                      className="text-red-500 hover:text-red-700 ml-2"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <select
-                      value={skill.category}
-                      onChange={(e) => updateSkill(index, 'category', e.target.value)}
-                      className="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option>Hard Skills</option>
-                      <option>Soft Skills</option>
-                      <option>Software and Applications</option>
-                      <option>Specialized Skills</option>
-                      <option>Certifications</option>
-                    </select>
-                    <select
-                      value={skill.level}
-                      onChange={(e) => updateSkill(index, 'level', e.target.value)}
-                      className="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option>Beginner</option>
-                      <option>Intermediate</option>
-                      <option>Advanced</option>
-                      <option>Expert</option>
-                    </select>
-                    {skill.type && (
-                      <select
-                        value={skill.type}
-                        onChange={(e) => updateSkill(index, 'type', e.target.value)}
-                        className="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      >
-                        <option>Specialized Knowledge</option>
-                        <option>Core Competency</option>
-                        <option>Common Skill</option>
-                      </select>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
 
             {/* Action Buttons */}
