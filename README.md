@@ -3,12 +3,49 @@
 An AI-powered career assessment tool that analyzes resumes, maps skills to Lightcast taxonomy, recommends career paths using O*NET data, and provides educational pathways and job listings.
 
 ## Features
-- Resume upload and parsing (TXT, DOC, DOCX)
-- Lightcast skills taxonomy mapping
-- O*NET career matching with SOC codes
-- Educational pathway generation
-- Job market insights and sample listings
-- Skill gap analysis
+
+### Core Capabilities
+- **Resume upload and parsing** (TXT, DOC, DOCX)
+- **Contact information extraction** - Automatically extracts name, email, phone, city, and LinkedIn URL
+- **Lightcast skills taxonomy mapping** with enhanced transparency:
+  - Skill definitions from Lightcast
+  - Evidence from resume showing why each skill was identified
+  - AI confidence scores (0-100%) for each skill inference
+- **O*NET career matching** with SOC codes
+- **Educational pathway generation** with:
+  - Structured learning steps with timelines
+  - Curated resources (courses, books, certifications)
+  - Hands-on project suggestions
+  - Skills covered per step
+- **Job market insights** including:
+  - Current job market statistics
+  - Sample job listings with requirements
+  - Top hiring companies
+  - Salary ranges and remote work availability
+- **Skill gap analysis** with visual skill matching
+
+## Recent Updates
+
+### Enhanced Skill Transparency (Latest)
+- **Skill Definitions**: Each extracted skill now includes a Lightcast-style definition explaining what the skill entails
+- **Evidence Tracking**: See the exact quote from your resume that led to each skill being identified
+- **Confidence Scoring**: AI provides 0-100% confidence scores with color-coded indicators:
+  - 90-100% (Green): Explicitly stated with context
+  - 70-89% (Blue): Directly mentioned in resume
+  - 50-69% (Yellow): Strongly implied by experience
+  - 30-49% (Orange): Inferred from related skills
+  - 0-29% (Red): Weak inference
+
+### Improved Educational Pathways & Job Listings
+- **Increased API token limits**: Educational pathways (16,000 tokens), Job listings (12,000 tokens) for comprehensive responses
+- **Better JSON extraction**: Robust bracket matching algorithm handles complex nested structures
+- **Comprehensive debugging**: Detailed console logging for troubleshooting
+- **Fallback UI**: Clear error messages when data can't be loaded
+
+### Contact Information Extraction
+- Persistent contact information panel on Step 1
+- Automatically extracts: Name, Email, Phone, City/Location, LinkedIn URL
+- Manual editing available at any time
 
 ## Quick Deployment Options
 
@@ -94,17 +131,35 @@ career-path-navigator/
 ├── index.html                    # HTML entry point
 ├── package.json                  # Dependencies
 ├── vite.config.js               # Build configuration
-├── main.jsx                     # React entry point
-├── career-assessment-tool.jsx   # Main application component
+├── src/
+│   ├── main.jsx                 # React entry point
+│   └── career-assessment-tool.jsx   # Main application component
+├── api/
+│   └── claude.js                # Serverless API endpoint for Claude API
 ├── README.md                    # This file
+├── DEPLOYMENT_GUIDE.md          # Detailed deployment instructions
 └── (documentation files)
 ```
 
 ## Environment Variables
 
-No environment variables needed! The tool uses Claude's API through the browser, which is configured to work without API keys in the Claude.ai artifact environment.
+### For Production Deployment (Vercel/Netlify)
 
-**Important Note**: If deploying to production, you may need to set up your own API key handling for the Claude API calls. The current implementation works in the Claude.ai artifact environment but may need modification for standalone deployment.
+You **must** set up the following environment variable:
+
+- `ANTHROPIC_API_KEY`: Your Claude API key from Anthropic
+
+**Setup Instructions:**
+
+1. **Get API Key**: Visit https://console.anthropic.com/ to get your API key
+2. **Add to Vercel**:
+   - Go to Project Settings → Environment Variables
+   - Add `ANTHROPIC_API_KEY` with your key
+3. **Add to Netlify**:
+   - Go to Site Settings → Environment Variables
+   - Add `ANTHROPIC_API_KEY` with your key
+
+**How it works**: The serverless function at `/api/claude.js` proxies all Claude API requests server-side, keeping your API key secure and hidden from client-side code.
 
 ## Sharing the Tool
 
@@ -146,14 +201,28 @@ Add Google Analytics or similar to `index.html`:
 - Clear cache: `rm -rf node_modules package-lock.json && npm install`
 
 ### API Issues
-- Claude API calls work in artifact environment
-- For production, you may need to implement backend API proxy
-- Consider rate limiting for production use
+- **Missing API Key**: Ensure `ANTHROPIC_API_KEY` environment variable is set in your deployment platform
+- **Empty Educational Pathways/Job Listings**:
+  1. Open browser Developer Tools (F12)
+  2. Go to Console tab
+  3. Look for debug output starting with `=== EDUCATIONAL PATHWAY DEBUG ===` or `=== JOB LISTINGS DEBUG ===`
+  4. Check if `learningSteps` or `sampleListings` arrays exist and have items
+  5. Look for truncation warnings (`stop_reason: max_tokens`)
+- **Rate Limiting**: Consider implementing rate limiting for production use
+- **API Timeouts**: Large resumes may take 10-30 seconds to process
 
 ### Deployment Issues
 - Check build output: `npm run build`
 - Verify all files are included
 - Check platform-specific logs (Netlify/Vercel dashboard)
+- Ensure API endpoint (`/api/claude.js`) is deployed correctly
+
+### Debugging Features
+The application includes comprehensive debugging capabilities:
+- **Console Logging**: All API calls log response lengths and stop reasons
+- **Data Validation**: Warnings appear when expected data structures are missing
+- **Fallback UI**: Friendly error messages guide users when issues occur
+- **Structure Validation**: Checks for proper JSON structure before rendering
 
 ## Browser Compatibility
 
@@ -164,19 +233,36 @@ Add Google Analytics or similar to `index.html`:
 
 ## Performance
 
-- Initial load: ~500KB (including React + dependencies)
-- API calls: 2-5 seconds per request
-- Supports multiple simultaneous users
-- No database required
+- **Initial load**: ~500KB (including React + dependencies)
+- **API call times**:
+  - Resume analysis: 5-10 seconds
+  - Lightcast mapping: 5-10 seconds
+  - Career path generation: 10-15 seconds
+  - Educational pathways: 15-30 seconds (16K tokens)
+  - Job listings: 10-20 seconds (12K tokens)
+- **Token limits**:
+  - Resume parsing: 500 tokens
+  - Contact extraction: 500 tokens
+  - Skill extraction: 8,000 tokens
+  - Lightcast mapping: 10,000 tokens
+  - Educational pathways: 16,000 tokens
+  - Job listings: 12,000 tokens
+- **Scalability**: Supports multiple simultaneous users
+- **Data storage**: No database required - stateless application
 
 ## Security Notes
 
-⚠️ **Important for Production**:
-- Currently uses direct API calls from browser
-- For production, implement backend proxy for API calls
-- Add rate limiting to prevent abuse
-- Consider authentication for sensitive use cases
-- Validate all user inputs server-side
+✅ **Production-Ready Security**:
+- **API Key Protection**: API calls are proxied through serverless function (`/api/claude.js`), keeping keys secure on the server
+- **No client-side exposure**: Anthropic API key never exposed to browser
+- **Server-side validation**: All requests go through backend proxy
+
+⚠️ **Additional Recommendations**:
+- **Rate limiting**: Implement request throttling to prevent abuse
+- **Authentication**: Add user authentication for internal/commercial use
+- **Input validation**: Resume file size limits and content validation
+- **CORS policies**: Configure appropriate CORS headers for your domain
+- **Monitoring**: Track API usage and costs through Anthropic Console
 
 ## Cost Considerations
 
