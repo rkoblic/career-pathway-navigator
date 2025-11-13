@@ -13,6 +13,7 @@ export default function CareerAssessmentTool() {
   const [jobListings, setJobListings] = useState({});
   const [loadingJobs, setLoadingJobs] = useState(null);
   const [userLocation, setUserLocation] = useState('United States');
+  const [uploadedFileName, setUploadedFileName] = useState('');
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -44,6 +45,7 @@ SKILLS
 
   const loadSampleResume = () => {
     setResumeText(sampleResume);
+    setUploadedFileName('');
   };
 
   // Helper function to extract and sanitize JSON from Claude's response
@@ -143,7 +145,8 @@ SKILLS
       
       if (text && text.trim()) {
         setResumeText(text);
-        await extractSkills(text);
+        setUploadedFileName(file.name);
+        setIsProcessing(false);
       } else {
         alert('Could not read file content. Please try a .txt or .docx file, or paste your resume below.');
         setIsProcessing(false);
@@ -756,6 +759,14 @@ Example format:
                 </div>
               </label>
               <p className="text-sm text-gray-500 mt-2">Supported formats: TXT, DOC, DOCX</p>
+              {uploadedFileName && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="font-medium">File uploaded:</span> {uploadedFileName}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="relative my-6">
@@ -782,7 +793,10 @@ Example format:
               </div>
               <textarea
                 value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
+                onChange={(e) => {
+                  setResumeText(e.target.value);
+                  if (uploadedFileName) setUploadedFileName('');
+                }}
                 placeholder="Paste your resume content here..."
                 className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 disabled={isProcessing}
