@@ -539,10 +539,10 @@ Return ONLY valid JSON array with no other text:
   // Generate educational pathway for missing skills
   const generateEducationalPathway = async (careerIndex, career) => {
     setLoadingPathway(careerIndex);
-    
+
     try {
       console.log('Generating educational pathway for:', career.title);
-      
+
       const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
@@ -550,7 +550,7 @@ Return ONLY valid JSON array with no other text:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
+          max_tokens: 16000,
           messages: [{
             role: 'user',
             content: `Create a detailed educational pathway to help someone learn these skills for a ${career.title} role.
@@ -616,6 +616,14 @@ Example format:
       let responseText = data.content[0].text;
 
       console.log('Educational pathway response (first 500 chars):', responseText.substring(0, 500));
+      console.log('Response length:', responseText.length);
+      console.log('Stop reason:', data.stop_reason);
+
+      // Check if response was truncated
+      if (data.stop_reason === 'max_tokens') {
+        console.warn('⚠️ Response was truncated due to token limit. Consider increasing max_tokens.');
+        alert('Warning: The educational pathway response was truncated. The data may be incomplete. Please try again or contact support.');
+      }
 
       // Use helper to extract JSON
       responseText = extractJSON(responseText);
@@ -630,7 +638,27 @@ Example format:
       
     } catch (error) {
       console.error('Error generating educational pathway:', error);
-      alert(`Error generating pathway: ${error.message}`);
+
+      // Provide more helpful error messages to users
+      let userMessage = 'Failed to generate educational pathway. ';
+
+      if (error.message.includes('Failed to parse JSON')) {
+        userMessage += 'The response from the AI was incomplete or malformed. This might be due to a network issue or the response being too large. Please try again.';
+      } else if (error.message.includes('API request failed')) {
+        userMessage += 'The API request failed. Please check your internet connection and try again.';
+      } else if (error.message.includes('fetch')) {
+        userMessage += 'Network error. Please check your internet connection and try again.';
+      } else {
+        userMessage += error.message;
+      }
+
+      alert(userMessage);
+
+      // Keep the expanded state so user can see there was an attempt
+      setExpandedPathways(prev => ({
+        ...prev,
+        [careerIndex]: null
+      }));
     } finally {
       setLoadingPathway(null);
     }
@@ -654,13 +682,13 @@ Example format:
   // Search for job listings for a specific career
   const searchJobListings = async (careerIndex, career) => {
     setLoadingJobs(careerIndex);
-    
+
     try {
       console.log('Searching job listings for:', career.title);
-      
+
       // First, use web search to find job listings
       const searchQuery = `${career.title} jobs ${userLocation} remote`;
-      
+
       const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
@@ -668,7 +696,7 @@ Example format:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
+          max_tokens: 12000,
           messages: [{
             role: 'user',
             content: `Search for current job listings for "${career.title}" positions. Focus on positions in ${userLocation} and remote opportunities.
@@ -736,6 +764,14 @@ Example format:
       let responseText = data.content[0].text;
 
       console.log('Job listings response (first 500 chars):', responseText.substring(0, 500));
+      console.log('Response length:', responseText.length);
+      console.log('Stop reason:', data.stop_reason);
+
+      // Check if response was truncated
+      if (data.stop_reason === 'max_tokens') {
+        console.warn('⚠️ Response was truncated due to token limit. Consider increasing max_tokens.');
+        alert('Warning: The job listings response was truncated. The data may be incomplete. Please try again or contact support.');
+      }
 
       // Use helper to extract JSON
       responseText = extractJSON(responseText);
@@ -750,7 +786,27 @@ Example format:
       
     } catch (error) {
       console.error('Error searching job listings:', error);
-      alert(`Error searching jobs: ${error.message}`);
+
+      // Provide more helpful error messages to users
+      let userMessage = 'Failed to search job listings. ';
+
+      if (error.message.includes('Failed to parse JSON')) {
+        userMessage += 'The response from the AI was incomplete or malformed. This might be due to a network issue or the response being too large. Please try again.';
+      } else if (error.message.includes('API request failed')) {
+        userMessage += 'The API request failed. Please check your internet connection and try again.';
+      } else if (error.message.includes('fetch')) {
+        userMessage += 'Network error. Please check your internet connection and try again.';
+      } else {
+        userMessage += error.message;
+      }
+
+      alert(userMessage);
+
+      // Keep the expanded state so user can see there was an attempt
+      setJobListings(prev => ({
+        ...prev,
+        [careerIndex]: null
+      }));
     } finally {
       setLoadingJobs(null);
     }
