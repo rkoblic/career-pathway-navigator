@@ -14,10 +14,19 @@ export default function CareerAssessmentTool() {
   const [loadingJobs, setLoadingJobs] = useState(null);
   const [userLocation, setUserLocation] = useState('United States');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [contactInfo, setContactInfo] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    city: '',
+    linkedIn: ''
+  });
 
   // Sample resume for testing
   const sampleResume = `John Doe
 Senior Software Engineer
+Email: john.doe@email.com | Phone: (555) 123-4567
+Location: San Francisco, CA | LinkedIn: https://linkedin.com/in/johndoe
 
 EXPERIENCE
 Senior Software Engineer at Tech Corp (2020-Present)
@@ -46,6 +55,21 @@ SKILLS
   const loadSampleResume = () => {
     setResumeText(sampleResume);
     setUploadedFileName('');
+    setContactInfo({
+      name: '',
+      phone: '',
+      email: '',
+      city: '',
+      linkedIn: ''
+    });
+  };
+
+  // Update contact info field
+  const updateContactInfo = (field, value) => {
+    setContactInfo(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Helper function to extract and sanitize JSON from Claude's response
@@ -110,6 +134,58 @@ SKILLS
     }
   };
 
+  // Extract contact information from resume text
+  const extractContactInfo = async (text) => {
+    try {
+      console.log('Extracting contact information...');
+
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: `Extract contact information from this resume. Return ONLY valid JSON with these fields (use empty string if not found):
+
+Resume:
+${text}
+
+Return format (no markdown, no explanation):
+{"name": "Full Name", "phone": "Phone Number", "email": "Email", "city": "City/Location", "linkedIn": "LinkedIn URL"}`
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Contact info extraction failed:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      let responseText = data.content[0].text.trim();
+      responseText = extractJSON(responseText);
+
+      const info = safeJSONParse(responseText, 'contact extraction');
+
+      if (info) {
+        setContactInfo({
+          name: info.name || '',
+          phone: info.phone || '',
+          email: info.email || '',
+          city: info.city || '',
+          linkedIn: info.linkedIn || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error extracting contact info:', error);
+      // Don't show alert - contact info extraction is optional
+    }
+  };
+
   // Handle file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -146,6 +222,8 @@ SKILLS
       if (text && text.trim()) {
         setResumeText(text);
         setUploadedFileName(file.name);
+        // Extract contact information
+        await extractContactInfo(text);
         setIsProcessing(false);
       } else {
         alert('Could not read file content. Please try a .txt or .docx file, or paste your resume below.');
@@ -778,6 +856,65 @@ Example format:
               </div>
             </div>
 
+            {/* Contact Information Fields */}
+            {(contactInfo.name || contactInfo.phone || contactInfo.email || contactInfo.city || contactInfo.linkedIn) && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={contactInfo.name}
+                      onChange={(e) => updateContactInfo('name', e.target.value)}
+                      placeholder="Full Name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={contactInfo.email}
+                      onChange={(e) => updateContactInfo('email', e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={contactInfo.phone}
+                      onChange={(e) => updateContactInfo('phone', e.target.value)}
+                      placeholder="(123) 456-7890"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">City/Location</label>
+                    <input
+                      type="text"
+                      value={contactInfo.city}
+                      onChange={(e) => updateContactInfo('city', e.target.value)}
+                      placeholder="City, State"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">LinkedIn URL</label>
+                    <input
+                      type="url"
+                      value={contactInfo.linkedIn}
+                      onChange={(e) => updateContactInfo('linkedIn', e.target.value)}
+                      placeholder="https://linkedin.com/in/username"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -802,13 +939,18 @@ Example format:
                 disabled={isProcessing}
               />
               <button
-                onClick={() => {
+                onClick={async () => {
                   console.log('Button clicked!');
                   console.log('Resume text length:', resumeText.length);
                   console.log('Is processing:', isProcessing);
                   if (!resumeText.trim()) {
                     alert('Please paste or load a resume first!');
                     return;
+                  }
+                  // Extract contact info if not already extracted
+                  const hasContactInfo = contactInfo.name || contactInfo.phone || contactInfo.email || contactInfo.city || contactInfo.linkedIn;
+                  if (!hasContactInfo) {
+                    await extractContactInfo(resumeText);
                   }
                   extractSkills(resumeText);
                 }}
