@@ -24,6 +24,7 @@ export default function CareerAssessmentTool() {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [editingSkill, setEditingSkill] = useState(null); // null or skill index
   const [editFormData, setEditFormData] = useState(null); // skill data being edited
+  const [activePathwayTab, setActivePathwayTab] = useState({}); // Track active tab per career path {careerIndex: 'self-study' | 'school-programs'}
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -586,7 +587,7 @@ Return ONLY valid JSON array with no other text:
           max_tokens: 16000,
           messages: [{
             role: 'user',
-            content: `Create a detailed educational pathway to help someone learn these skills for a ${career.title} role.
+            content: `Create TWO educational pathways to help someone learn these skills for a ${career.title} role.
 
 Skills to Learn:
 ${JSON.stringify(career.skillsToLearn, null, 2)}
@@ -594,48 +595,104 @@ ${JSON.stringify(career.skillsToLearn, null, 2)}
 User's Current Skills (for context):
 ${JSON.stringify(skills.map(s => s.name), null, 2)}
 
-Create a comprehensive learning pathway with the following structure:
+User Location: ${userLocation}${contactInfo.city ? `, ${contactInfo.city}` : ''}
+
+Create both a self-study path AND formal school programs with the following structure:
 
 Return a JSON object with:
-- "timeline": Estimated time to complete (e.g., "3-6 months", "6-12 months")
-- "difficulty": Overall difficulty level (Beginner-Friendly, Intermediate, Advanced)
-- "learningSteps": Array of learning steps, each with:
-  - "step": Step number
-  - "title": What you'll learn
-  - "duration": Estimated time (e.g., "2-4 weeks")
-  - "resources": Array of 2-4 specific resources with:
-    - "name": Resource name
-    - "type": Resource type (Online Course, Book, Certification, Practice Platform, Tutorial Series, Bootcamp)
-    - "provider": Provider name (e.g., Coursera, Udemy, LinkedIn Learning, specific website)
-    - "cost": Cost category (Free, Paid, Freemium)
-    - "url": A plausible URL (use real platforms)
-  - "skills": Array of skill names covered in this step
-  - "projects": 1-2 hands-on project ideas to practice
+
+1. "selfStudy": Self-directed learning path with:
+   - "timeline": Estimated time to complete (e.g., "3-6 months", "6-12 months")
+   - "difficulty": Overall difficulty level (Beginner-Friendly, Intermediate, Advanced)
+   - "learningSteps": Array of learning steps, each with:
+     - "step": Step number
+     - "title": What you'll learn
+     - "duration": Estimated time (e.g., "2-4 weeks")
+     - "resources": Array of 2-4 specific resources with:
+       - "name": Resource name
+       - "type": Resource type (Online Course, Book, Certification, Practice Platform, Tutorial Series, Bootcamp)
+       - "provider": Provider name (e.g., Coursera, Udemy, LinkedIn Learning, specific website)
+       - "cost": Cost category (Free, Paid, Freemium)
+       - "url": A plausible URL (use real platforms)
+     - "skills": Array of skill names covered in this step
+     - "projects": 1-2 hands-on project ideas to practice
+
+2. "schoolPrograms": Formal educational programs with:
+   - "localPrograms": Array of 3-5 programs near user's location with:
+     - "institution": School/institution name
+     - "programName": Full program name
+     - "credentialType": Type (Certificate, Associate's, Bachelor's, Master's, Bootcamp)
+     - "duration": Program length (e.g., "12 weeks", "6 months", "2 years")
+     - "modality": Delivery method (In-Person, Online Synchronous, Online Asynchronous, Hybrid)
+     - "schedule": Schedule type (Full-Time, Part-Time, Evening/Weekend, Self-Paced)
+     - "costRange": Tuition cost (e.g., "$5,000-$8,000", "$15,000", "~$7,000 total")
+     - "location": Physical location or "Online"
+     - "distance": Distance from user (e.g., "5 miles", "Same city", "Online - any location")
+     - "url": Program website URL
+     - "startDates": Upcoming enrollment periods (e.g., "Fall 2025, Spring 2026", "Rolling admissions")
+     - "prerequisites": Basic requirements (e.g., "High school diploma", "None", "Bachelor's degree")
+   - "onlinePrograms": Array of 2-3 top online programs (any location) with same fields
 
 DO NOT include any text outside the JSON. Return only valid JSON.
 
 Example format:
 {
-  "timeline": "4-6 months",
-  "difficulty": "Intermediate",
-  "learningSteps": [
-    {
-      "step": 1,
-      "title": "Foundation in JavaScript",
-      "duration": "3-4 weeks",
-      "resources": [
-        {
-          "name": "JavaScript Fundamentals",
-          "type": "Online Course",
-          "provider": "Codecademy",
-          "cost": "Freemium",
-          "url": "https://www.codecademy.com/learn/introduction-to-javascript"
-        }
-      ],
-      "skills": ["JavaScript (Programming Language)", "ES6+"],
-      "projects": ["Build a to-do list app", "Create an interactive calculator"]
-    }
-  ]
+  "selfStudy": {
+    "timeline": "4-6 months",
+    "difficulty": "Intermediate",
+    "learningSteps": [
+      {
+        "step": 1,
+        "title": "Foundation in JavaScript",
+        "duration": "3-4 weeks",
+        "resources": [
+          {
+            "name": "JavaScript Fundamentals",
+            "type": "Online Course",
+            "provider": "Codecademy",
+            "cost": "Freemium",
+            "url": "https://www.codecademy.com/learn/introduction-to-javascript"
+          }
+        ],
+        "skills": ["JavaScript (Programming Language)", "ES6+"],
+        "projects": ["Build a to-do list app", "Create an interactive calculator"]
+      }
+    ]
+  },
+  "schoolPrograms": {
+    "localPrograms": [
+      {
+        "institution": "Boston University",
+        "programName": "Professional Certificate in Full-Stack Development",
+        "credentialType": "Certificate",
+        "duration": "6 months",
+        "modality": "Hybrid",
+        "schedule": "Part-Time",
+        "costRange": "$8,000-$12,000",
+        "location": "Boston, MA",
+        "distance": "3 miles",
+        "url": "https://www.bu.edu/...",
+        "startDates": "Fall 2025, Spring 2026",
+        "prerequisites": "Basic computer skills"
+      }
+    ],
+    "onlinePrograms": [
+      {
+        "institution": "Georgia Tech",
+        "programName": "Online Master of Science in Computer Science",
+        "credentialType": "Master's",
+        "duration": "3 years",
+        "modality": "Online Asynchronous",
+        "schedule": "Part-Time",
+        "costRange": "~$7,000 total",
+        "location": "Online",
+        "distance": "Online - any location",
+        "url": "https://omscs.gatech.edu/",
+        "startDates": "Fall 2025, Spring 2026",
+        "prerequisites": "Bachelor's in CS or related field"
+      }
+    ]
+  }
 }`
           }]
         })
@@ -667,14 +724,34 @@ Example format:
       // Comprehensive debugging
       console.log('=== EDUCATIONAL PATHWAY DEBUG ===');
       console.log('Full pathway object:', JSON.stringify(pathway, null, 2));
-      console.log('Has timeline?', pathway?.hasOwnProperty('timeline'), '→', pathway?.timeline);
-      console.log('Has difficulty?', pathway?.hasOwnProperty('difficulty'), '→', pathway?.difficulty);
-      console.log('Has learningSteps?', pathway?.hasOwnProperty('learningSteps'));
-      console.log('learningSteps is array?', Array.isArray(pathway?.learningSteps));
-      console.log('learningSteps length:', pathway?.learningSteps?.length);
-      if (pathway?.learningSteps) {
-        console.log('First learning step:', pathway.learningSteps[0]);
+
+      // Check for dual-pathway structure
+      console.log('Has selfStudy?', pathway?.hasOwnProperty('selfStudy'));
+      console.log('Has schoolPrograms?', pathway?.hasOwnProperty('schoolPrograms'));
+
+      if (pathway?.selfStudy) {
+        console.log('Self-Study - Has timeline?', pathway.selfStudy?.hasOwnProperty('timeline'), '→', pathway.selfStudy?.timeline);
+        console.log('Self-Study - Has difficulty?', pathway.selfStudy?.hasOwnProperty('difficulty'), '→', pathway.selfStudy?.difficulty);
+        console.log('Self-Study - Has learningSteps?', pathway.selfStudy?.hasOwnProperty('learningSteps'));
+        console.log('Self-Study - learningSteps is array?', Array.isArray(pathway.selfStudy?.learningSteps));
+        console.log('Self-Study - learningSteps length:', pathway.selfStudy?.learningSteps?.length);
+        if (pathway.selfStudy?.learningSteps?.[0]) {
+          console.log('Self-Study - First learning step:', pathway.selfStudy.learningSteps[0]);
+        }
       }
+
+      if (pathway?.schoolPrograms) {
+        console.log('School Programs - Has localPrograms?', pathway.schoolPrograms?.hasOwnProperty('localPrograms'));
+        console.log('School Programs - localPrograms is array?', Array.isArray(pathway.schoolPrograms?.localPrograms));
+        console.log('School Programs - localPrograms length:', pathway.schoolPrograms?.localPrograms?.length);
+        console.log('School Programs - Has onlinePrograms?', pathway.schoolPrograms?.hasOwnProperty('onlinePrograms'));
+        console.log('School Programs - onlinePrograms is array?', Array.isArray(pathway.schoolPrograms?.onlinePrograms));
+        console.log('School Programs - onlinePrograms length:', pathway.schoolPrograms?.onlinePrograms?.length);
+        if (pathway.schoolPrograms?.localPrograms?.[0]) {
+          console.log('School Programs - First local program:', pathway.schoolPrograms.localPrograms[0]);
+        }
+      }
+
       console.log('=== END DEBUG ===');
 
       // Validate critical fields
@@ -682,9 +759,26 @@ Example format:
         console.error('❌ Educational pathway is not a valid object');
         throw new Error('Invalid educational pathway data structure');
       }
-      if (!Array.isArray(pathway.learningSteps) || pathway.learningSteps.length === 0) {
-        console.warn('⚠️ Educational pathway missing learningSteps array or it is empty');
-        console.warn('This will result in an empty display. Check API response structure.');
+
+      // Validate self-study path
+      if (pathway.selfStudy) {
+        if (!Array.isArray(pathway.selfStudy.learningSteps) || pathway.selfStudy.learningSteps.length === 0) {
+          console.warn('⚠️ Self-study pathway missing learningSteps array or it is empty');
+        }
+      } else {
+        console.warn('⚠️ No self-study pathway in response');
+      }
+
+      // Validate school programs
+      if (pathway.schoolPrograms) {
+        if (!Array.isArray(pathway.schoolPrograms.localPrograms) || pathway.schoolPrograms.localPrograms.length === 0) {
+          console.warn('⚠️ School programs missing localPrograms array or it is empty');
+        }
+        if (!Array.isArray(pathway.schoolPrograms.onlinePrograms) || pathway.schoolPrograms.onlinePrograms.length === 0) {
+          console.warn('⚠️ School programs missing onlinePrograms array or it is empty');
+        }
+      } else {
+        console.warn('⚠️ No school programs in response');
       }
 
       setExpandedPathways(prev => ({
@@ -1773,30 +1867,58 @@ Example format:
                     {/* Educational Pathway Content */}
                     {expandedPathways[index] && (
                       <div className="mt-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-bold text-purple-900 flex items-center gap-2">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-bold text-purple-900 flex items-center gap-2 mb-4">
                             <GraduationCap className="w-5 h-5" />
                             Your Learning Journey
                           </h3>
-                          <div className="flex gap-3 text-sm">
-                            {expandedPathways[index].timeline && (
-                              <span className="flex items-center gap-1 text-purple-700">
-                                <Clock className="w-4 h-4" />
-                                {expandedPathways[index].timeline}
-                              </span>
-                            )}
-                            {expandedPathways[index].difficulty && (
-                              <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs font-medium">
-                                {expandedPathways[index].difficulty}
-                              </span>
-                            )}
+
+                          {/* Tab Navigation */}
+                          <div className="flex gap-2 border-b border-purple-300">
+                            <button
+                              onClick={() => setActivePathwayTab(prev => ({ ...prev, [index]: 'self-study' }))}
+                              className={`px-4 py-2 font-medium text-sm transition-all ${
+                                (activePathwayTab[index] || 'self-study') === 'self-study'
+                                  ? 'text-purple-900 border-b-2 border-purple-600 bg-white/50'
+                                  : 'text-purple-700 hover:text-purple-900 hover:bg-white/30'
+                              }`}
+                            >
+                              📚 Self-Study Path
+                            </button>
+                            <button
+                              onClick={() => setActivePathwayTab(prev => ({ ...prev, [index]: 'school-programs' }))}
+                              className={`px-4 py-2 font-medium text-sm transition-all ${
+                                activePathwayTab[index] === 'school-programs'
+                                  ? 'text-purple-900 border-b-2 border-purple-600 bg-white/50'
+                                  : 'text-purple-700 hover:text-purple-900 hover:bg-white/30'
+                              }`}
+                            >
+                              🎓 School Programs
+                            </button>
                           </div>
                         </div>
 
-                        {/* Learning Steps */}
-                        {Array.isArray(expandedPathways[index].learningSteps) && expandedPathways[index].learningSteps.length > 0 ? (
-                          <div className="space-y-4">
-                            {expandedPathways[index].learningSteps.map((step, stepIdx) => (
+                        {/* Self-Study Tab Content */}
+                        {(activePathwayTab[index] || 'self-study') === 'self-study' && expandedPathways[index].selfStudy && (
+                          <div>
+                            <div className="flex gap-3 text-sm mb-4">
+                              {expandedPathways[index].selfStudy.timeline && (
+                                <span className="flex items-center gap-1 text-purple-700">
+                                  <Clock className="w-4 h-4" />
+                                  {expandedPathways[index].selfStudy.timeline}
+                                </span>
+                              )}
+                              {expandedPathways[index].selfStudy.difficulty && (
+                                <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs font-medium">
+                                  {expandedPathways[index].selfStudy.difficulty}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Learning Steps */}
+                            {Array.isArray(expandedPathways[index].selfStudy.learningSteps) && expandedPathways[index].selfStudy.learningSteps.length > 0 ? (
+                              <div className="space-y-4">
+                                {expandedPathways[index].selfStudy.learningSteps.map((step, stepIdx) => (
                               <div key={stepIdx} className="bg-white rounded-lg p-5 shadow-sm border border-purple-100">
                                 <div className="flex items-start gap-3 mb-3">
                                   <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
@@ -1887,13 +2009,213 @@ Example format:
                                     </ul>
                                   </div>
                                 )}
+                                </div>
+                              ))}
+                            </div>
+                            ) : (
+                              <div className="bg-white rounded-lg p-6 border border-purple-200 text-center">
+                                <p className="text-gray-600 mb-2">Unable to load learning pathway data.</p>
+                                <p className="text-sm text-gray-500">Please check the browser console for details or try clicking the button again.</p>
                               </div>
-                            ))}
+                            )}
                           </div>
-                        ) : (
-                          <div className="bg-white rounded-lg p-6 border border-purple-200 text-center">
-                            <p className="text-gray-600 mb-2">Unable to load learning pathway data.</p>
-                            <p className="text-sm text-gray-500">Please check the browser console for details or try clicking the button again.</p>
+                        )}
+
+                        {/* School Programs Tab Content */}
+                        {activePathwayTab[index] === 'school-programs' && expandedPathways[index].schoolPrograms && (
+                          <div>
+                            {contactInfo.city && (
+                              <p className="text-sm text-purple-700 mb-4 flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                Programs near {contactInfo.city}
+                              </p>
+                            )}
+
+                            {/* Local Programs */}
+                            {Array.isArray(expandedPathways[index].schoolPrograms.localPrograms) && expandedPathways[index].schoolPrograms.localPrograms.length > 0 && (
+                              <div className="mb-6">
+                                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                  <MapPin className="w-4 h-4" />
+                                  Local & Regional Programs
+                                </h4>
+                                <div className="space-y-3">
+                                  {expandedPathways[index].schoolPrograms.localPrograms.map((program, pi) => (
+                                    <div key={pi} className="bg-white rounded-lg p-4 border border-purple-100 hover:border-purple-300 transition-colors">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div className="flex-1">
+                                          <h5 className="font-bold text-gray-900 mb-1">
+                                            {program.institution}
+                                          </h5>
+                                          <p className="text-sm text-gray-700 mb-2">{program.programName}</p>
+                                        </div>
+                                        {program.credentialType && (
+                                          <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                            {program.credentialType}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                                        {program.duration && (
+                                          <div className="flex items-center gap-1 text-gray-600">
+                                            <Clock className="w-3 h-3" />
+                                            {program.duration}
+                                          </div>
+                                        )}
+                                        {program.modality && (
+                                          <div className="flex items-center gap-1 text-gray-600">
+                                            {program.modality === 'In-Person' && '🏫'}
+                                            {program.modality === 'Online Synchronous' && '💻'}
+                                            {program.modality === 'Online Asynchronous' && '⏰'}
+                                            {program.modality === 'Hybrid' && '🔄'}
+                                            <span>{program.modality}</span>
+                                          </div>
+                                        )}
+                                        {program.schedule && (
+                                          <div className="text-gray-600">{program.schedule}</div>
+                                        )}
+                                        {program.distance && (
+                                          <div className="text-gray-600">{program.distance}</div>
+                                        )}
+                                      </div>
+
+                                      {program.costRange && (
+                                        <div className="mb-2">
+                                          <span className="text-sm font-semibold text-gray-700">Cost: </span>
+                                          <span className="text-sm text-gray-900">{program.costRange}</span>
+                                        </div>
+                                      )}
+
+                                      {program.prerequisites && (
+                                        <div className="mb-3 text-sm text-gray-600">
+                                          <span className="font-semibold">Prerequisites: </span>
+                                          {program.prerequisites}
+                                        </div>
+                                      )}
+
+                                      {program.startDates && (
+                                        <div className="mb-3 text-sm text-gray-600">
+                                          <span className="font-semibold">Start Dates: </span>
+                                          {program.startDates}
+                                        </div>
+                                      )}
+
+                                      {program.url && (
+                                        <div className="flex gap-2">
+                                          <a
+                                            href={program.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                          >
+                                            View Program <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Online Programs */}
+                            {Array.isArray(expandedPathways[index].schoolPrograms.onlinePrograms) && expandedPathways[index].schoolPrograms.onlinePrograms.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                  <GraduationCap className="w-4 h-4" />
+                                  Top Online Programs
+                                </h4>
+                                <div className="space-y-3">
+                                  {expandedPathways[index].schoolPrograms.onlinePrograms.map((program, pi) => (
+                                    <div key={pi} className="bg-white rounded-lg p-4 border border-purple-100 hover:border-purple-300 transition-colors">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div className="flex-1">
+                                          <h5 className="font-bold text-gray-900 mb-1">
+                                            {program.institution}
+                                          </h5>
+                                          <p className="text-sm text-gray-700 mb-2">{program.programName}</p>
+                                        </div>
+                                        {program.credentialType && (
+                                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                            {program.credentialType}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                                        {program.duration && (
+                                          <div className="flex items-center gap-1 text-gray-600">
+                                            <Clock className="w-3 h-3" />
+                                            {program.duration}
+                                          </div>
+                                        )}
+                                        {program.modality && (
+                                          <div className="flex items-center gap-1 text-gray-600">
+                                            ⏰ {program.modality}
+                                          </div>
+                                        )}
+                                        {program.schedule && (
+                                          <div className="text-gray-600">{program.schedule}</div>
+                                        )}
+                                        {program.distance && (
+                                          <div className="text-gray-600">🌍 {program.distance}</div>
+                                        )}
+                                      </div>
+
+                                      {program.costRange && (
+                                        <div className="mb-2">
+                                          <span className="text-sm font-semibold text-gray-700">Cost: </span>
+                                          <span className="text-sm text-gray-900">{program.costRange}</span>
+                                        </div>
+                                      )}
+
+                                      {program.prerequisites && (
+                                        <div className="mb-3 text-sm text-gray-600">
+                                          <span className="font-semibold">Prerequisites: </span>
+                                          {program.prerequisites}
+                                        </div>
+                                      )}
+
+                                      {program.startDates && (
+                                        <div className="mb-3 text-sm text-gray-600">
+                                          <span className="font-semibold">Start Dates: </span>
+                                          {program.startDates}
+                                        </div>
+                                      )}
+
+                                      {program.url && (
+                                        <div className="flex gap-2">
+                                          <a
+                                            href={program.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                          >
+                                            View Program <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No programs available */}
+                            {(!expandedPathways[index].schoolPrograms.localPrograms || expandedPathways[index].schoolPrograms.localPrograms.length === 0) &&
+                             (!expandedPathways[index].schoolPrograms.onlinePrograms || expandedPathways[index].schoolPrograms.onlinePrograms.length === 0) && (
+                              <div className="bg-white rounded-lg p-6 border border-purple-200 text-center">
+                                <p className="text-gray-600 mb-2">Unable to load school programs.</p>
+                                <p className="text-sm text-gray-500">Please check the browser console for details or try clicking the button again.</p>
+                              </div>
+                            )}
+
+                            {/* Disclaimer */}
+                            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <p className="text-xs text-gray-600">
+                                <strong>Note:</strong> Program details are AI-generated recommendations. Please verify current tuition, admission requirements, and availability directly with each institution.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
