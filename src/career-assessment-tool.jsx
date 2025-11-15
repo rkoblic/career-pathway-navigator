@@ -767,6 +767,7 @@ Return a JSON object with:
      - "url": Program website URL
      - "startDates": Upcoming enrollment periods (e.g., "Fall 2025, Spring 2026", "Rolling admissions")
      - "prerequisites": Basic requirements (e.g., "High school diploma", "None", "Bachelor's degree")
+     - "skillsCovered": Array of skill names from the Skills to Learn list that this program teaches
    - "onlinePrograms": Array of 2-3 top online programs (any location) with same fields
 
 DO NOT include any text outside the JSON. Return only valid JSON.
@@ -809,7 +810,8 @@ Example format:
         "distance": "3 miles",
         "url": "https://www.bu.edu/...",
         "startDates": "Fall 2025, Spring 2026",
-        "prerequisites": "Basic computer skills"
+        "prerequisites": "Basic computer skills",
+        "skillsCovered": ["JavaScript (Programming Language)", "React", "Node.js", "PostgreSQL"]
       }
     ],
     "onlinePrograms": [
@@ -825,7 +827,8 @@ Example format:
         "distance": "Online - any location",
         "url": "https://omscs.gatech.edu/",
         "startDates": "Fall 2025, Spring 2026",
-        "prerequisites": "Bachelor's in CS or related field"
+        "prerequisites": "Bachelor's in CS or related field",
+        "skillsCovered": ["Python", "Machine Learning", "Data Structures", "Algorithms"]
       }
     ]
   }
@@ -2374,11 +2377,24 @@ Example format:
                                           </h5>
                                           <p className="text-sm text-gray-700 mb-2">{program.programName}</p>
                                         </div>
-                                        {program.credentialType && (
-                                          <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                                            {program.credentialType}
-                                          </span>
-                                        )}
+                                        <div className="flex flex-col gap-1 items-end">
+                                          {program.credentialType && (
+                                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                              {program.credentialType}
+                                            </span>
+                                          )}
+                                          {program.skillsCovered && Array.isArray(program.skillsCovered) && program.skillsCovered.length > 0 && path.skillsToLearn && (
+                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                              program.skillsCovered.length >= path.skillsToLearn.length * 0.8
+                                                ? 'bg-green-100 text-green-700'
+                                                : program.skillsCovered.length >= path.skillsToLearn.length * 0.5
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-gray-100 text-gray-700'
+                                            }`}>
+                                              {program.skillsCovered.length}/{path.skillsToLearn.length} skills
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
 
                                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
@@ -2426,6 +2442,21 @@ Example format:
                                         </div>
                                       )}
 
+                                      {program.skillsCovered && Array.isArray(program.skillsCovered) && program.skillsCovered.length > 0 && (
+                                        <div className="mb-3">
+                                          <p className="text-xs font-semibold text-gray-700 mb-1">
+                                            Skills Covered ({program.skillsCovered.length}{path.skillsToLearn ? ` of ${path.skillsToLearn.length}` : ''})
+                                          </p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {program.skillsCovered.map((skill, si) => (
+                                              <span key={si} className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                                {skill}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
                                       {program.url && (
                                         <div className="flex gap-2">
                                           <a
@@ -2461,11 +2492,24 @@ Example format:
                                           </h5>
                                           <p className="text-sm text-gray-700 mb-2">{program.programName}</p>
                                         </div>
-                                        {program.credentialType && (
-                                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                                            {program.credentialType}
-                                          </span>
-                                        )}
+                                        <div className="flex flex-col gap-1 items-end">
+                                          {program.credentialType && (
+                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                              {program.credentialType}
+                                            </span>
+                                          )}
+                                          {program.skillsCovered && Array.isArray(program.skillsCovered) && program.skillsCovered.length > 0 && path.skillsToLearn && (
+                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                              program.skillsCovered.length >= path.skillsToLearn.length * 0.8
+                                                ? 'bg-green-100 text-green-700'
+                                                : program.skillsCovered.length >= path.skillsToLearn.length * 0.5
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-gray-100 text-gray-700'
+                                            }`}>
+                                              {program.skillsCovered.length}/{path.skillsToLearn.length} skills
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
 
                                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
@@ -2506,6 +2550,21 @@ Example format:
                                         <div className="mb-3 text-sm text-gray-600">
                                           <span className="font-semibold">Start Dates: </span>
                                           {program.startDates}
+                                        </div>
+                                      )}
+
+                                      {program.skillsCovered && Array.isArray(program.skillsCovered) && program.skillsCovered.length > 0 && (
+                                        <div className="mb-3">
+                                          <p className="text-xs font-semibold text-gray-700 mb-1">
+                                            Skills Covered ({program.skillsCovered.length}{path.skillsToLearn ? ` of ${path.skillsToLearn.length}` : ''})
+                                          </p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {program.skillsCovered.map((skill, si) => (
+                                              <span key={si} className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                                {skill}
+                                              </span>
+                                            ))}
+                                          </div>
                                         </div>
                                       )}
 
