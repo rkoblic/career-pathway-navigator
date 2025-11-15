@@ -25,6 +25,7 @@ export default function CareerAssessmentTool() {
   const [editingSkill, setEditingSkill] = useState(null); // null or skill index
   const [editFormData, setEditFormData] = useState(null); // skill data being edited
   const [activePathwayTab, setActivePathwayTab] = useState({}); // Track active tab per career path {careerIndex: 'self-study' | 'school-programs'}
+  const [programFilters, setProgramFilters] = useState({}); // Track filters per career path {careerIndex: {modality: [], cost: [], duration: [], schedule: []}}
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -140,6 +141,141 @@ SKILLS
     });
 
     return stats;
+  };
+
+  // Parse cost range from string (e.g., "$5,000-$8,000", "$15,000", "Free")
+  const parseCostRange = (costString) => {
+    if (!costString) return null;
+
+    const lower = costString.toLowerCase();
+    if (lower.includes('free') || lower.includes('$0')) {
+      return { min: 0, max: 0 };
+    }
+
+    // Remove commas, ~, and other non-numeric chars except dash and numbers
+    const cleaned = costString.replace(/[~,\s]/g, '');
+
+    // Match dollar amounts
+    const amounts = cleaned.match(/\$?\d+/g);
+    if (!amounts || amounts.length === 0) return null;
+
+    const nums = amounts.map(a => parseInt(a.replace('$', '')));
+
+    if (nums.length === 1) {
+      return { min: nums[0], max: nums[0] };
+    } else if (nums.length >= 2) {
+      return { min: Math.min(...nums), max: Math.max(...nums) };
+    }
+
+    return null;
+  };
+
+  // Parse duration to months (e.g., "12 weeks" -> 3, "6 months" -> 6, "2 years" -> 24)
+  const parseDuration = (durationString) => {
+    if (!durationString) return null;
+
+    const lower = durationString.toLowerCase();
+    const match = lower.match(/(\d+)\s*(week|month|year)/);
+
+    if (!match) return null;
+
+    const value = parseInt(match[1]);
+    const unit = match[2];
+
+    if (unit.startsWith('week')) {
+      return value / 4; // Convert weeks to months (approximate)
+    } else if (unit.startsWith('month')) {
+      return value;
+    } else if (unit.startsWith('year')) {
+      return value * 12;
+    }
+
+    return null;
+  };
+
+  // Check if program matches active filters
+  const matchesFilters = (program, filters) => {
+    if (!filters || Object.keys(filters).length === 0) return true;
+
+    // Modality filter
+    if (filters.modality && filters.modality.length > 0) {
+      if (!program.modality || !filters.modality.includes(program.modality)) {
+        return false;
+      }
+    }
+
+    // Cost filter
+    if (filters.cost && filters.cost.length > 0) {
+      const costRange = parseCostRange(program.costRange);
+      if (!costRange) return false;
+
+      let matchesCost = false;
+      for (const range of filters.cost) {
+        if (range === 'Free' && costRange.min === 0 && costRange.max === 0) {
+          matchesCost = true;
+          break;
+        } else if (range === 'Under $5k' && costRange.max < 5000) {
+          matchesCost = true;
+          break;
+        } else if (range === '$5k-$15k' && costRange.min < 15000 && costRange.max >= 5000) {
+          matchesCost = true;
+          break;
+        } else if (range === '$15k-$30k' && costRange.min < 30000 && costRange.max >= 15000) {
+          matchesCost = true;
+          break;
+        } else if (range === 'Over $30k' && costRange.min >= 30000) {
+          matchesCost = true;
+          break;
+        }
+      }
+      if (!matchesCost) return false;
+    }
+
+    // Duration filter
+    if (filters.duration && filters.duration.length > 0) {
+      const durationMonths = parseDuration(program.duration);
+      if (durationMonths === null) return false;
+
+      let matchesDuration = false;
+      for (const range of filters.duration) {
+        if (range === '<3mo' && durationMonths < 3) {
+          matchesDuration = true;
+          break;
+        } else if (range === '3-6mo' && durationMonths >= 3 && durationMonths < 6) {
+          matchesDuration = true;
+          break;
+        } else if (range === '6-12mo' && durationMonths >= 6 && durationMonths < 12) {
+          matchesDuration = true;
+          break;
+        } else if (range === '1-2yr' && durationMonths >= 12 && durationMonths < 24) {
+          matchesDuration = true;
+          break;
+        } else if (range === '>2yr' && durationMonths >= 24) {
+          matchesDuration = true;
+          break;
+        }
+      }
+      if (!matchesDuration) return false;
+    }
+
+    // Schedule filter
+    if (filters.schedule && filters.schedule.length > 0) {
+      if (!program.schedule || !filters.schedule.includes(program.schedule)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Filter programs array based on active filters
+  const getFilteredPrograms = (programs, filters) => {
+    if (!programs || !Array.isArray(programs)) return [];
+    if (!filters || Object.values(filters).every(arr => !arr || arr.length === 0)) {
+      return programs; // No active filters
+    }
+
+    return programs.filter(program => matchesFilters(program, filters));
   };
 
   // Toggle category expansion
@@ -1151,6 +1287,157 @@ Example format:
     }
   };
 
+  // FilterDropdown Component - Reusable multi-select dropdown
+  const FilterDropdown = ({ label, icon, options, selectedValues, onChange, isOpen, setIsOpen }) => {
+    const selectedCount = selectedValues.length;
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
+            selectedCount > 0
+              ? 'bg-purple-100 border-purple-300 text-purple-900'
+              : 'bg-white border-purple-200 text-gray-700 hover:border-purple-300'
+          }`}
+        >
+          <span>{icon}</span>
+          <span className="text-sm font-medium">{label}</span>
+          {selectedCount > 0 && (
+            <span className="bg-purple-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {selectedCount}
+            </span>
+          )}
+          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full mt-1 bg-white border border-purple-200 rounded-lg shadow-lg z-10 min-w-[200px]">
+            <div className="p-2 max-h-64 overflow-y-auto">
+              {options.map((option) => {
+                const isSelected = selectedValues.includes(option);
+                return (
+                  <label
+                    key={option}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        if (isSelected) {
+                          onChange(selectedValues.filter(v => v !== option));
+                        } else {
+                          onChange([...selectedValues, option]);
+                        }
+                      }}
+                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-700">{option}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // FilterBar Component - Contains all filter controls
+  const FilterBar = ({ careerIndex }) => {
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const filters = programFilters[careerIndex] || { modality: [], cost: [], duration: [], schedule: [] };
+
+    const updateFilter = (category, values) => {
+      setProgramFilters(prev => ({
+        ...prev,
+        [careerIndex]: {
+          ...(prev[careerIndex] || { modality: [], cost: [], duration: [], schedule: [] }),
+          [category]: values
+        }
+      }));
+    };
+
+    const clearAllFilters = () => {
+      setProgramFilters(prev => ({
+        ...prev,
+        [careerIndex]: { modality: [], cost: [], duration: [], schedule: [] }
+      }));
+      setOpenDropdown(null);
+    };
+
+    const totalActiveFilters =
+      (filters.modality?.length || 0) +
+      (filters.cost?.length || 0) +
+      (filters.duration?.length || 0) +
+      (filters.schedule?.length || 0);
+
+    return (
+      <div className="bg-purple-50/50 border border-purple-200 rounded-lg p-4 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Filters:</span>
+
+          <FilterDropdown
+            label="Modality"
+            icon="🏫"
+            options={['In-Person', 'Online Synchronous', 'Online Asynchronous', 'Hybrid']}
+            selectedValues={filters.modality || []}
+            onChange={(values) => updateFilter('modality', values)}
+            isOpen={openDropdown === 'modality'}
+            setIsOpen={(open) => setOpenDropdown(open ? 'modality' : null)}
+          />
+
+          <FilterDropdown
+            label="Cost"
+            icon="💰"
+            options={['Free', 'Under $5k', '$5k-$15k', '$15k-$30k', 'Over $30k']}
+            selectedValues={filters.cost || []}
+            onChange={(values) => updateFilter('cost', values)}
+            isOpen={openDropdown === 'cost'}
+            setIsOpen={(open) => setOpenDropdown(open ? 'cost' : null)}
+          />
+
+          <FilterDropdown
+            label="Duration"
+            icon="⏱️"
+            options={['<3mo', '3-6mo', '6-12mo', '1-2yr', '>2yr']}
+            selectedValues={filters.duration || []}
+            onChange={(values) => updateFilter('duration', values)}
+            isOpen={openDropdown === 'duration'}
+            setIsOpen={(open) => setOpenDropdown(open ? 'duration' : null)}
+          />
+
+          <FilterDropdown
+            label="Schedule"
+            icon="📅"
+            options={['Full-Time', 'Part-Time', 'Evening/Weekend', 'Self-Paced']}
+            selectedValues={filters.schedule || []}
+            onChange={(values) => updateFilter('schedule', values)}
+            isOpen={openDropdown === 'schedule'}
+            setIsOpen={(open) => setOpenDropdown(open ? 'schedule' : null)}
+          />
+
+          <div className="flex-1"></div>
+
+          {totalActiveFilters > 0 && (
+            <>
+              <span className="text-sm text-purple-700 font-medium">
+                {totalActiveFilters} {totalActiveFilters === 1 ? 'filter' : 'filters'} active
+              </span>
+              <button
+                onClick={clearAllFilters}
+                className="text-sm text-purple-600 hover:text-purple-800 font-medium underline"
+              >
+                Clear All
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-6xl mx-auto">
@@ -1898,6 +2185,11 @@ Example format:
                           </div>
                         </div>
 
+                        {/* Filter Bar - Only show for School Programs tab */}
+                        {activePathwayTab[index] === 'school-programs' && (
+                          <FilterBar careerIndex={index} />
+                        )}
+
                         {/* Self-Study Tab Content */}
                         {(activePathwayTab[index] || 'self-study') === 'self-study' && expandedPathways[index].selfStudy && (
                           <div>
@@ -2022,7 +2314,24 @@ Example format:
                         )}
 
                         {/* School Programs Tab Content */}
-                        {activePathwayTab[index] === 'school-programs' && expandedPathways[index].schoolPrograms && (
+                        {activePathwayTab[index] === 'school-programs' && expandedPathways[index].schoolPrograms && (() => {
+                          // Apply filters to programs
+                          const filters = programFilters[index] || { modality: [], cost: [], duration: [], schedule: [] };
+                          const filteredLocalPrograms = getFilteredPrograms(
+                            expandedPathways[index].schoolPrograms.localPrograms,
+                            filters
+                          );
+                          const filteredOnlinePrograms = getFilteredPrograms(
+                            expandedPathways[index].schoolPrograms.onlinePrograms,
+                            filters
+                          );
+
+                          const totalPrograms = (expandedPathways[index].schoolPrograms.localPrograms?.length || 0) +
+                                                (expandedPathways[index].schoolPrograms.onlinePrograms?.length || 0);
+                          const totalFiltered = filteredLocalPrograms.length + filteredOnlinePrograms.length;
+                          const hasActiveFilters = Object.values(filters).some(arr => arr && arr.length > 0);
+
+                          return (
                           <div>
                             {contactInfo.city && (
                               <p className="text-sm text-purple-700 mb-4 flex items-center gap-1">
@@ -2031,15 +2340,32 @@ Example format:
                               </p>
                             )}
 
+                            {/* Program count display */}
+                            {hasActiveFilters && (
+                              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-gray-700">
+                                  Showing <span className="font-semibold">{totalFiltered}</span> of <span className="font-semibold">{totalPrograms}</span> programs
+                                </p>
+                              </div>
+                            )}
+
+                            {/* No results message */}
+                            {totalFiltered === 0 && hasActiveFilters && (
+                              <div className="mb-6 p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                                <p className="text-gray-700 font-medium mb-2">No programs match your filters</p>
+                                <p className="text-sm text-gray-600">Try adjusting your filter criteria to see more results.</p>
+                              </div>
+                            )}
+
                             {/* Local Programs */}
-                            {Array.isArray(expandedPathways[index].schoolPrograms.localPrograms) && expandedPathways[index].schoolPrograms.localPrograms.length > 0 && (
+                            {Array.isArray(filteredLocalPrograms) && filteredLocalPrograms.length > 0 && (
                               <div className="mb-6">
                                 <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                   <MapPin className="w-4 h-4" />
                                   Local & Regional Programs
                                 </h4>
                                 <div className="space-y-3">
-                                  {expandedPathways[index].schoolPrograms.localPrograms.map((program, pi) => (
+                                  {filteredLocalPrograms.map((program, pi) => (
                                     <div key={pi} className="bg-white rounded-lg p-4 border border-purple-100 hover:border-purple-300 transition-colors">
                                       <div className="flex justify-between items-start mb-2">
                                         <div className="flex-1">
@@ -2119,14 +2445,14 @@ Example format:
                             )}
 
                             {/* Online Programs */}
-                            {Array.isArray(expandedPathways[index].schoolPrograms.onlinePrograms) && expandedPathways[index].schoolPrograms.onlinePrograms.length > 0 && (
+                            {Array.isArray(filteredOnlinePrograms) && filteredOnlinePrograms.length > 0 && (
                               <div>
                                 <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                   <GraduationCap className="w-4 h-4" />
                                   Top Online Programs
                                 </h4>
                                 <div className="space-y-3">
-                                  {expandedPathways[index].schoolPrograms.onlinePrograms.map((program, pi) => (
+                                  {filteredOnlinePrograms.map((program, pi) => (
                                     <div key={pi} className="bg-white rounded-lg p-4 border border-purple-100 hover:border-purple-300 transition-colors">
                                       <div className="flex justify-between items-start mb-2">
                                         <div className="flex-1">
@@ -2217,7 +2543,8 @@ Example format:
                               </p>
                             </div>
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
