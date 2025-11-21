@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Plus, X, CheckCircle, Briefcase, TrendingUp, BookOpen, GraduationCap, Clock, DollarSign, ChevronDown, ChevronUp, MapPin, Building, ExternalLink, Users, Info, HelpCircle } from 'lucide-react';
+import { Upload, Plus, X, CheckCircle, Briefcase, TrendingUp, BookOpen, GraduationCap, Clock, DollarSign, ChevronDown, ChevronUp, MapPin, Building, ExternalLink, Users, Info, HelpCircle, MessageSquare, Send, Mail } from 'lucide-react';
 import { getAllProficiencyLevels, getProficiencyColorClass } from './proficiencyDefinitions';
 
 export default function CareerAssessmentTool() {
@@ -32,6 +32,16 @@ export default function CareerAssessmentTool() {
   const [skillSpecificDefinitions, setSkillSpecificDefinitions] = useState({}); // Cache for skill-specific proficiency definitions {skillName: definitions}
   const [loadingSkillDefinition, setLoadingSkillDefinition] = useState(false); // Loading state for skill-specific definitions
   const [showSkillSpecificHelp, setShowSkillSpecificHelp] = useState(false); // Show/hide skill-specific help in modal
+
+  // Feedback validation state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false); // Show/hide feedback request modal
+  const [feedbackStep, setFeedbackStep] = useState(1); // Step in feedback modal: 1=select skills, 2=add contacts, 3=preview
+  const [selectedSkillsForFeedback, setSelectedSkillsForFeedback] = useState([]); // Array of skill indices
+  const [feedbackContacts, setFeedbackContacts] = useState([]); // Array of {email, relationship, name}
+  const [feedbackPersonalMessage, setFeedbackPersonalMessage] = useState(''); // Optional message to include
+  const [loadingFeedbackRequest, setLoadingFeedbackRequest] = useState(false); // Loading when creating request
+  const [feedbackRequests, setFeedbackRequests] = useState([]); // All feedback requests for this user
+  const [skillFeedback, setSkillFeedback] = useState({}); // Aggregated feedback by skill name
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -1355,6 +1365,150 @@ Example format:
     }
   };
 
+  // Feedback Request Functions
+
+  // Open feedback modal
+  const openFeedbackModal = () => {
+    setShowFeedbackModal(true);
+    setFeedbackStep(1);
+    setSelectedSkillsForFeedback([]);
+    setFeedbackContacts([]);
+    setFeedbackPersonalMessage('');
+  };
+
+  // Close feedback modal
+  const closeFeedbackModal = () => {
+    setShowFeedbackModal(false);
+    setFeedbackStep(1);
+  };
+
+  // Toggle skill selection for feedback
+  const toggleSkillForFeedback = (skillIndex) => {
+    setSelectedSkillsForFeedback(prev => {
+      if (prev.includes(skillIndex)) {
+        return prev.filter(i => i !== skillIndex);
+      } else {
+        if (prev.length >= 15) {
+          alert('Maximum 15 skills per feedback request');
+          return prev;
+        }
+        return [...prev, skillIndex];
+      }
+    });
+  };
+
+  // Add contact for feedback
+  const addFeedbackContact = (email, relationship, name = '') => {
+    if (feedbackContacts.length >= 10) {
+      alert('Maximum 10 contacts per feedback request');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    if (!relationship) {
+      alert('Please select a relationship');
+      return;
+    }
+
+    setFeedbackContacts(prev => [...prev, { email, relationship, name }]);
+  };
+
+  // Remove contact
+  const removeFeedbackContact = (index) => {
+    setFeedbackContacts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Create feedback request
+  const createFeedbackRequest = async () => {
+    if (selectedSkillsForFeedback.length === 0) {
+      alert('Please select at least one skill to validate');
+      return;
+    }
+
+    if (feedbackContacts.length === 0) {
+      alert('Please add at least one contact');
+      return;
+    }
+
+    setLoadingFeedbackRequest(true);
+
+    try {
+      const selectedSkills = selectedSkillsForFeedback.map(index => skills[index]);
+
+      const response = await fetch('/api/create-feedback-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: contactInfo.email || null,
+          userName: contactInfo.name || 'User',
+          skills: selectedSkills,
+          contacts: feedbackContacts,
+          personalMessage: feedbackPersonalMessage
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create feedback request');
+      }
+
+      // Success!
+      alert(`Feedback request created! ${data.emailsSent} email${data.emailsSent > 1 ? 's' : ''} sent successfully.`);
+
+      // Add to feedback requests list
+      setFeedbackRequests(prev => [...prev, {
+        id: data.requestId,
+        skills: selectedSkills,
+        contacts: feedbackContacts,
+        responseCount: 0,
+        createdAt: new Date().toISOString()
+      }]);
+
+      // Close modal
+      closeFeedbackModal();
+
+    } catch (error) {
+      console.error('Error creating feedback request:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setLoadingFeedbackRequest(false);
+    }
+  };
+
+  // Fetch feedback for user's skills
+  const fetchFeedback = async (requestId = null) => {
+    try {
+      const url = requestId
+        ? `/api/get-feedback?requestId=${requestId}`
+        : contactInfo.email
+        ? `/api/get-feedback?userEmail=${contactInfo.email}`
+        : null;
+
+      if (!url) return;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch feedback');
+      }
+
+      setFeedbackRequests(data.requests || []);
+      setSkillFeedback(data.skillFeedback || {});
+
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+    }
+  };
+
   // FilterDropdown Component - Reusable multi-select dropdown
   const FilterDropdown = ({ label, icon, options, selectedValues, onChange, isOpen, setIsOpen }) => {
     const selectedCount = selectedValues.length;
@@ -2166,14 +2320,294 @@ Example format:
                   Start Over
                 </button>
               </div>
-              <button
-                onClick={generateCareerPaths}
-                disabled={isProcessing || skills.length === 0}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isProcessing ? 'Analyzing...' : 'Generate Career Paths'}
-                <TrendingUp className="w-5 h-5" />
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={openFeedbackModal}
+                  disabled={skills.length === 0}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  Request Peer Feedback
+                </button>
+                <button
+                  onClick={generateCareerPaths}
+                  disabled={isProcessing || skills.length === 0}
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isProcessing ? 'Analyzing...' : 'Generate Career Paths'}
+                  <TrendingUp className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback Request Modal */}
+        {showFeedbackModal && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={closeFeedbackModal}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <MessageSquare className="w-6 h-6 text-purple-600" />
+                    Request Peer Feedback
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Step {feedbackStep} of 3: {
+                      feedbackStep === 1 ? 'Select Skills' :
+                      feedbackStep === 2 ? 'Add Contacts' :
+                      'Review & Send'
+                    }
+                  </p>
+                </div>
+                <button
+                  onClick={closeFeedbackModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6">
+                {/* Step 1: Select Skills */}
+                {feedbackStep === 1 && (
+                  <div>
+                    <p className="text-gray-700 mb-4">
+                      Select the skills you want feedback on (5-10 recommended, max 15):
+                    </p>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {skills.map((skill, index) => (
+                        <label
+                          key={index}
+                          className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedSkillsForFeedback.includes(index)
+                              ? 'bg-purple-50 border-purple-300'
+                              : 'bg-white border-gray-200 hover:border-purple-200'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSkillsForFeedback.includes(index)}
+                            onChange={() => toggleSkillForFeedback(index)}
+                            className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">{skill.name}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getLevelColor(skill.level)}`}>
+                                {skill.level}
+                              </span>
+                              <span>{skill.category}</span>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-4 text-sm text-gray-600">
+                      {selectedSkillsForFeedback.length} skill{selectedSkillsForFeedback.length !== 1 ? 's' : ''} selected
+                      {selectedSkillsForFeedback.length > 10 && (
+                        <span className="text-amber-600 ml-2">
+                          ⚠️ Consider limiting to 10 skills for higher response rates
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Add Contacts */}
+                {feedbackStep === 2 && (
+                  <div>
+                    <p className="text-gray-700 mb-4">
+                      Who should validate your skills? Add colleagues, managers, clients, or friends:
+                    </p>
+
+                    {/* Add Contact Form */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        <input
+                          type="email"
+                          id="contactEmail"
+                          placeholder="Email address"
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <select
+                          id="contactRelationship"
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">Select relationship</option>
+                          <option value="Manager">Manager</option>
+                          <option value="Former Manager">Former Manager</option>
+                          <option value="Colleague">Colleague</option>
+                          <option value="Peer">Peer</option>
+                          <option value="Direct Report">Direct Report</option>
+                          <option value="Client">Client</option>
+                          <option value="Mentor">Mentor</option>
+                          <option value="Mentee">Mentee</option>
+                          <option value="Friend">Friend</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        <input
+                          type="text"
+                          id="contactName"
+                          placeholder="Name (optional)"
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const email = document.getElementById('contactEmail').value;
+                          const relationship = document.getElementById('contactRelationship').value;
+                          const name = document.getElementById('contactName').value;
+                          if (email && relationship) {
+                            addFeedbackContact(email, relationship, name);
+                            document.getElementById('contactEmail').value = '';
+                            document.getElementById('contactRelationship').value = '';
+                            document.getElementById('contactName').value = '';
+                          } else {
+                            alert('Please enter email and select relationship');
+                          }
+                        }}
+                        className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Contact
+                      </button>
+                    </div>
+
+                    {/* Contacts List */}
+                    {feedbackContacts.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-700 text-sm">Contacts ({feedbackContacts.length}/10):</h4>
+                        {feedbackContacts.map((contact, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                            <div>
+                              <div className="font-medium text-gray-800">{contact.email}</div>
+                              <div className="text-sm text-gray-500">
+                                {contact.name && `${contact.name} • `}{contact.relationship}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeFeedbackContact(index)}
+                              className="text-red-600 hover:text-red-800 transition-colors"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {feedbackContacts.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Mail className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <p>No contacts added yet</p>
+                        <p className="text-sm">Add at least one contact to continue</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3: Preview & Send */}
+                {feedbackStep === 3 && (
+                  <div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Review Your Request:</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• {selectedSkillsForFeedback.length} skills to validate</p>
+                        <p>• {feedbackContacts.length} contact{feedbackContacts.length > 1 ? 's' : ''} will receive emails</p>
+                        <p>• Request expires in 30 days</p>
+                      </div>
+                    </div>
+
+                    {/* Personal Message */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Personal Message (Optional)
+                      </label>
+                      <textarea
+                        value={feedbackPersonalMessage}
+                        onChange={(e) => setFeedbackPersonalMessage(e.target.value)}
+                        placeholder="Add a personal note to your contacts..."
+                        rows={3}
+                        maxLength={500}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                      />
+                      <div className="text-xs text-gray-500 mt-1 text-right">
+                        {feedbackPersonalMessage.length}/500
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-700 mb-3">Selected Skills:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSkillsForFeedback.map(index => (
+                          <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                            {skills[index].name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => feedbackStep > 1 ? setFeedbackStep(feedbackStep - 1) : closeFeedbackModal()}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  {feedbackStep === 1 ? 'Cancel' : 'Back'}
+                </button>
+
+                {feedbackStep < 3 ? (
+                  <button
+                    onClick={() => {
+                      if (feedbackStep === 1 && selectedSkillsForFeedback.length === 0) {
+                        alert('Please select at least one skill');
+                        return;
+                      }
+                      if (feedbackStep === 2 && feedbackContacts.length === 0) {
+                        alert('Please add at least one contact');
+                        return;
+                      }
+                      setFeedbackStep(feedbackStep + 1);
+                    }}
+                    disabled={
+                      (feedbackStep === 1 && selectedSkillsForFeedback.length === 0) ||
+                      (feedbackStep === 2 && feedbackContacts.length === 0)
+                    }
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    Continue
+                    <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={createFeedbackRequest}
+                    disabled={loadingFeedbackRequest}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loadingFeedbackRequest ? (
+                      <>Sending...</>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Send Requests
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

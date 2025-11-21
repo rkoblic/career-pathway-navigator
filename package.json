@@ -4,10 +4,13 @@
   "description": "AI-powered career assessment tool with Lightcast skills taxonomy",
   "private": true,
   "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
+    "lucide-react": "^0.263.1",
+    "mammoth": "^1.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "lucide-react": "^0.263.1",
-    "mammoth": "^1.6.0"
+    "resend": "^6.5.2",
+    "uuid": "^13.0.0"
   },
   "scripts": {
     "dev": "vite",
