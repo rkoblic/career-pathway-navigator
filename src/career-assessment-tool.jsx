@@ -66,11 +66,11 @@ SKILLS
     setResumeText(sampleResume);
     setUploadedFileName('');
     setContactInfo({
-      name: '',
-      phone: '',
-      email: '',
-      city: '',
-      linkedIn: ''
+      name: 'John Doe',
+      phone: '(555) 123-4567',
+      email: 'john.doe@email.com',
+      city: 'San Francisco, CA',
+      linkedIn: 'https://linkedin.com/in/johndoe'
     });
   };
 
@@ -1574,6 +1574,18 @@ Example format:
               </div>
             </div>
 
+            {/* Load Sample Resume Button */}
+            <div className="mb-6 text-center">
+              <button
+                onClick={loadSampleResume}
+                className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isProcessing}
+              >
+                Load Sample Resume
+              </button>
+              <p className="text-sm text-gray-500 mt-2">Try the tool with pre-filled sample data</p>
+            </div>
+
             {/* Contact Information Fields */}
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
@@ -1632,18 +1644,9 @@ Example format:
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Paste Your Resume
-                </label>
-                <button
-                  onClick={loadSampleResume}
-                  className="text-sm text-indigo-600 hover:text-indigo-800 underline"
-                  disabled={isProcessing}
-                >
-                  Load Sample Resume
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paste Your Resume
+              </label>
               <textarea
                 value={resumeText}
                 onChange={(e) => {
