@@ -1,15 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { v4 as uuidv4 } from 'uuid';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Rate limiting: Track requests by IP
 const requestCounts = new Map();
@@ -29,10 +19,40 @@ const RATE_LIMIT_WINDOW = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
  * }
  */
 export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Check environment variables
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase environment variables');
+    return res.status(500).json({ error: 'Server configuration error: Supabase not configured' });
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error('Missing Resend API key');
+    return res.status(500).json({ error: 'Server configuration error: Email service not configured' });
+  }
+
+  // Initialize clients (inside handler to avoid initialization errors)
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+  );
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   try {
     const { userEmail, userName, skills, contacts, personalMessage } = req.body;
