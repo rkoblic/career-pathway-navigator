@@ -10,6 +10,7 @@ export default function CareerAssessmentTool() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [newSkill, setNewSkill] = useState('');
   const [expandedPathways, setExpandedPathways] = useState({});
+  const [expandedCareers, setExpandedCareers] = useState({});
   const [loadingPathway, setLoadingPathway] = useState(null);
   const [jobListings, setJobListings] = useState({});
   const [loadingJobs, setLoadingJobs] = useState(null);
@@ -1007,6 +1008,14 @@ Example format:
     } finally {
       setLoadingPathway(null);
     }
+  };
+
+  // Toggle career details display
+  const toggleCareerDetails = (careerIndex) => {
+    setExpandedCareers(prev => ({
+      ...prev,
+      [careerIndex]: !prev[careerIndex]
+    }));
   };
 
   // Toggle educational pathway display
@@ -2190,27 +2199,21 @@ Example format:
 
             {careerPaths.map((path, index) => (
               <div key={index} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <div className="flex justify-between items-start mb-4">
+                {/* Always Visible: Essential Info */}
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-800 mb-1">
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">
                       {typeof path.title === 'string' ? path.title : 'Career Path'}
                     </h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                      {path.socCode && typeof path.socCode === 'string' && (
-                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                          SOC: {path.socCode}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-4 text-sm mb-2">
                       {path.salaryRange && typeof path.salaryRange === 'string' && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-gray-700">
                           <Briefcase className="w-4 h-4" />
                           {path.salaryRange}
                         </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
                       {path.outlook && typeof path.outlook === 'string' && (
-                        <span className={`px-2 py-1 rounded ${
+                        <span className={`px-2 py-1 rounded text-sm font-medium ${
                           path.outlook === 'Excellent' ? 'bg-green-100 text-green-800' :
                           path.outlook === 'Good' ? 'bg-blue-100 text-blue-800' :
                           path.outlook === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
@@ -2219,15 +2222,16 @@ Example format:
                           {path.outlook} Outlook
                         </span>
                       )}
-                      {path.growthRate && (typeof path.growthRate === 'string' || typeof path.growthRate === 'number') && (
-                        <span className="text-gray-600">
-                          Growth: {String(path.growthRate)}
-                        </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {Array.isArray(path.requiredSkills) && path.requiredSkills.length > 0 && (
+                        <span className="font-medium text-green-700">{path.requiredSkills.length} matching skill{path.requiredSkills.length !== 1 ? 's' : ''}</span>
                       )}
-                      {path.postingsCount && (typeof path.postingsCount === 'string' || typeof path.postingsCount === 'number') && (
-                        <span className="text-gray-600">
-                          Demand: {String(path.postingsCount)}
-                        </span>
+                      {Array.isArray(path.skillsToLearn) && path.skillsToLearn.length > 0 && (
+                        <>
+                          {Array.isArray(path.requiredSkills) && path.requiredSkills.length > 0 && ' • '}
+                          <span className="font-medium text-blue-700">{path.skillsToLearn.length} to learn</span>
+                        </>
                       )}
                     </div>
                   </div>
@@ -2244,54 +2248,96 @@ Example format:
                   </div>
                 </div>
 
-                {path.description && typeof path.description === 'string' && (
-                  <p className="text-gray-700 mb-4">{path.description}</p>
-                )}
+                {/* View/Hide Details Button */}
+                <button
+                  onClick={() => toggleCareerDetails(index)}
+                  className="w-full mb-3 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-indigo-200"
+                >
+                  {expandedCareers[index] ? (
+                    <>
+                      Hide Details
+                      <ChevronUp className="w-4 h-4" />
+                    </>
+                  ) : (
+                    <>
+                      View Details
+                      <ChevronDown className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      Your Matching Skills ({Array.isArray(path.requiredSkills) ? path.requiredSkills.length : 0})
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.isArray(path.requiredSkills) && path.requiredSkills.map((skill, i) => (
-                        <span key={i} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                          {typeof skill === 'string' ? skill : typeof skill === 'object' && skill.name ? skill.name : 'Skill'}
+                {/* Expandable Details Section */}
+                {expandedCareers[index] && (
+                  <div className="border-t border-gray-200 pt-4 space-y-4">
+                    {/* Additional Info */}
+                    <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                      {path.socCode && typeof path.socCode === 'string' && (
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                          SOC: {path.socCode}
                         </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
-                      Skills to Learn ({Array.isArray(path.skillsToLearn) ? path.skillsToLearn.length : 0})
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.isArray(path.skillsToLearn) && path.skillsToLearn.map((skill, i) => (
-                        <span key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                          {typeof skill === 'string' ? skill : typeof skill === 'object' && skill.name ? skill.name : 'Skill'}
+                      )}
+                      {path.growthRate && (typeof path.growthRate === 'string' || typeof path.growthRate === 'number') && (
+                        <span className="text-gray-700">
+                          Growth: {String(path.growthRate)}
                         </span>
-                      ))}
+                      )}
+                      {path.postingsCount && (typeof path.postingsCount === 'string' || typeof path.postingsCount === 'number') && (
+                        <span className="text-gray-700">
+                          Demand: {String(path.postingsCount)}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </div>
 
-                {/* Educational Pathway Button */}
-                {Array.isArray(path.skillsToLearn) && path.skillsToLearn.length > 0 && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() => togglePathway(index, path)}
-                      disabled={loadingPathway === index}
-                      className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-3 rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all flex items-center justify-center gap-2 font-medium"
-                    >
-                      <GraduationCap className="w-5 h-5" />
-                      {loadingPathway === index ? 'Generating Learning Path...' : 
-                       expandedPathways[index] ? 'Hide Educational Pathway' : 
-                       'View Educational Pathway'}
-                      {expandedPathways[index] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    {/* Description */}
+                    {path.description && typeof path.description === 'string' && (
+                      <p className="text-gray-700">{path.description}</p>
+                    )}
+
+                    {/* Full Skill Lists */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          Your Matching Skills ({Array.isArray(path.requiredSkills) ? path.requiredSkills.length : 0})
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(path.requiredSkills) && path.requiredSkills.map((skill, i) => (
+                            <span key={i} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                              {typeof skill === 'string' ? skill : typeof skill === 'object' && skill.name ? skill.name : 'Skill'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                          Skills to Learn ({Array.isArray(path.skillsToLearn) ? path.skillsToLearn.length : 0})
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(path.skillsToLearn) && path.skillsToLearn.map((skill, i) => (
+                            <span key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                              {typeof skill === 'string' ? skill : typeof skill === 'object' && skill.name ? skill.name : 'Skill'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Educational Pathway Button */}
+                    {Array.isArray(path.skillsToLearn) && path.skillsToLearn.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => togglePathway(index, path)}
+                          disabled={loadingPathway === index}
+                          className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-3 rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all flex items-center justify-center gap-2 font-medium"
+                        >
+                          <GraduationCap className="w-5 h-5" />
+                          {loadingPathway === index ? 'Generating Learning Path...' :
+                           expandedPathways[index] ? 'Hide Educational Pathway' :
+                           'View Educational Pathway'}
+                          {expandedPathways[index] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
 
                     {/* Educational Pathway Content */}
                     {expandedPathways[index] && (
@@ -2748,8 +2794,8 @@ Example format:
                   </div>
                 )}
 
-                {/* Job Listings Section */}
-                <div className="mt-4">
+                    {/* Job Listings Section */}
+                    <div className="mt-4">
                   <button
                     onClick={() => searchJobListings(index, path)}
                     disabled={loadingJobs === index}
@@ -2954,7 +3000,9 @@ Example format:
                       )}
                     </div>
                   )}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 
