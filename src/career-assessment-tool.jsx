@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, Plus, X, CheckCircle, Briefcase, TrendingUp, BookOpen, GraduationCap, Clock, DollarSign, ChevronDown, ChevronUp, MapPin, Building, ExternalLink, Users } from 'lucide-react';
+import { Upload, Plus, X, CheckCircle, Briefcase, TrendingUp, BookOpen, GraduationCap, Clock, DollarSign, ChevronDown, ChevronUp, MapPin, Building, ExternalLink, Users, Info, HelpCircle } from 'lucide-react';
+import { getAllProficiencyLevels, getProficiencyColorClass } from './proficiencyDefinitions';
 
 export default function CareerAssessmentTool() {
   const [step, setStep] = useState(1);
@@ -26,6 +27,10 @@ export default function CareerAssessmentTool() {
   const [editFormData, setEditFormData] = useState(null); // skill data being edited
   const [activePathwayTab, setActivePathwayTab] = useState({}); // Track active tab per career path {careerIndex: 'self-study' | 'school-programs'}
   const [programFilters, setProgramFilters] = useState({}); // Track filters per career path {careerIndex: {modality: [], cost: [], duration: [], schedule: []}}
+  const [showProficiencyHelp, setShowProficiencyHelp] = useState(false); // Show/hide proficiency help section
+  const [skillSpecificDefinitions, setSkillSpecificDefinitions] = useState({}); // Cache for skill-specific proficiency definitions {skillName: definitions}
+  const [loadingSkillDefinition, setLoadingSkillDefinition] = useState(false); // Loading state for skill-specific definitions
+  const [showSkillSpecificHelp, setShowSkillSpecificHelp] = useState(false); // Show/hide skill-specific help in modal
 
   // Sample resume for testing
   const sampleResume = `John Doe
@@ -296,6 +301,7 @@ SKILLS
   const closeEditModal = () => {
     setEditingSkill(null);
     setEditFormData(null);
+    setShowSkillSpecificHelp(false);
   };
 
   // Save edited skill
@@ -704,6 +710,56 @@ Return ONLY valid JSON array with no other text:
     const updated = [...skills];
     updated[index][field] = value;
     setSkills(updated);
+  };
+
+  // Get skill-specific proficiency definitions
+  const getSkillSpecificDefinitions = async (skillName) => {
+    // Check cache first
+    if (skillSpecificDefinitions[skillName]) {
+      return skillSpecificDefinitions[skillName];
+    }
+
+    setLoadingSkillDefinition(true);
+
+    try {
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: `Define proficiency levels for the skill "${skillName}" with concrete, specific examples for each level. Keep each level to 2-3 sentences maximum.
+
+Beginner:
+Intermediate:
+Advanced:
+Expert:
+
+Format as plain text, no JSON, no markdown. Be specific to ${skillName}.`
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const definitions = data.content[0].text;
+
+      // Cache the result
+      setSkillSpecificDefinitions(prev => ({
+        ...prev,
+        [skillName]: definitions
+      }));
+
+      setLoadingSkillDefinition(false);
+      return definitions;
+    } catch (error) {
+      console.error('Error fetching skill-specific definitions:', error);
+      setLoadingSkillDefinition(false);
+      return null;
+    }
   };
 
   // Generate educational pathway for missing skills
@@ -1634,6 +1690,53 @@ Example format:
               Lightcast (formerly Emsi Burning Glass) provides standardized skill names and IDs used by employers and educators worldwide. Review, edit, or add more skills below.
             </p>
 
+            {/* Proficiency Level Help Section */}
+            <div className="mb-6 border border-blue-200 rounded-lg bg-blue-50">
+              <button
+                onClick={() => setShowProficiencyHelp(!showProficiencyHelp)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-blue-100 transition-colors rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-blue-600" />
+                  <span className="font-semibold text-blue-900">What do the proficiency levels mean?</span>
+                </div>
+                {showProficiencyHelp ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </button>
+
+              {showProficiencyHelp && (
+                <div className="px-4 pb-4 space-y-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Use these guidelines to assess your proficiency in each skill:
+                  </p>
+                  {getAllProficiencyLevels().map(level => (
+                    <div key={level.name} className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getProficiencyColorClass(level.name)}`}>
+                          {level.title}
+                        </span>
+                        <span className="text-gray-600 text-sm italic">{level.description}</span>
+                      </div>
+                      <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                        {level.criteria.map((criterion, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-gray-400 mt-1">•</span>
+                            <span>{criterion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-gray-500 mt-2 ml-4 italic">
+                        Examples: {level.examples}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Summary Dashboard */}
             {(() => {
               const stats = getSkillStats();
@@ -1834,9 +1937,25 @@ Example format:
 
                     {/* Proficiency Level - PRIMARY EDIT */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Proficiency Level <span className="text-red-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Proficiency Level <span className="text-red-500">*</span>
+                        </label>
+                        <button
+                          onClick={async () => {
+                            if (!showSkillSpecificHelp) {
+                              await getSkillSpecificDefinitions(editFormData.name);
+                            }
+                            setShowSkillSpecificHelp(!showSkillSpecificHelp);
+                          }}
+                          className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
+                          type="button"
+                          disabled={loadingSkillDefinition}
+                        >
+                          <Info className="w-4 h-4" />
+                          {loadingSkillDefinition ? 'Loading...' : 'What do these mean for this skill?'}
+                        </button>
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         {['Expert', 'Advanced', 'Intermediate', 'Beginner'].map((level) => (
                           <button
@@ -1852,6 +1971,23 @@ Example format:
                           </button>
                         ))}
                       </div>
+
+                      {/* Skill-Specific Proficiency Definitions */}
+                      {showSkillSpecificHelp && skillSpecificDefinitions[editFormData.name] && (
+                        <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                          <div className="flex items-start gap-2 mb-3">
+                            <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h4 className="font-semibold text-indigo-900 text-sm mb-1">
+                                Proficiency Levels for {editFormData.name}
+                              </h4>
+                              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                                {skillSpecificDefinitions[editFormData.name]}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Skill Definition */}
