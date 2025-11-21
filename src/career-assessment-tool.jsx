@@ -2024,6 +2024,9 @@ Example format:
                                 return abbrev[level] || '?';
                               };
 
+                              const hasFeedback = skillFeedback[skill.name];
+                              const feedbackCount = hasFeedback?.feedbackCount || 0;
+
                               return (
                                 <div
                                   key={idx}
@@ -2034,6 +2037,15 @@ Example format:
                                   <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${getLevelColor(skill.level)}`}>
                                     {getLevelAbbrev(skill.level)}
                                   </span>
+                                  {hasFeedback && feedbackCount > 0 && (
+                                    <span
+                                      className="flex items-center gap-0.5 text-xs font-semibold text-green-600"
+                                      title={`${feedbackCount} peer review${feedbackCount > 1 ? 's' : ''}`}
+                                    >
+                                      <CheckCircle className="w-3.5 h-3.5" />
+                                      {feedbackCount}
+                                    </span>
+                                  )}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -2214,6 +2226,101 @@ Example format:
                             {editFormData.confidence >= 30 && editFormData.confidence < 50 && 'Low - Inferred from related skills'}
                             {editFormData.confidence < 30 && 'Very Low - Weak inference'}
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Peer Feedback */}
+                    {skillFeedback[editFormData.name] && skillFeedback[editFormData.name].feedbackCount > 0 && (
+                      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-green-900 mb-1">
+                              Peer Feedback ({skillFeedback[editFormData.name].feedbackCount})
+                            </h4>
+                            <p className="text-sm text-green-800">
+                              Colleagues have validated this skill
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Feedback Summary */}
+                        <div className="space-y-3">
+                          {/* Average Rating */}
+                          <div className="bg-white rounded-lg p-3 border border-green-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Peer Assessment:</span>
+                              <span className="text-lg font-bold text-green-700">
+                                {skillFeedback[editFormData.name].averageRating}
+                              </span>
+                            </div>
+                            {/* Distribution */}
+                            <div className="flex gap-1">
+                              {['Expert', 'Advanced', 'Intermediate', 'Beginner'].map(level => {
+                                const count = skillFeedback[editFormData.name].distribution[level] || 0;
+                                const total = skillFeedback[editFormData.name].feedbackCount;
+                                const percentage = (count / total) * 100;
+                                return (
+                                  <div key={level} className="flex-1" title={`${level}: ${count}`}>
+                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full ${
+                                          level === 'Expert' ? 'bg-purple-500' :
+                                          level === 'Advanced' ? 'bg-green-500' :
+                                          level === 'Intermediate' ? 'bg-blue-500' :
+                                          'bg-gray-400'
+                                        }`}
+                                        style={{ width: `${percentage}%` }}
+                                      ></div>
+                                    </div>
+                                    <div className="text-xs text-center text-gray-600 mt-1">
+                                      {level.charAt(0)}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Consensus */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-700">Consensus:</span>
+                            <span className="font-semibold text-green-700">
+                              {(parseFloat(skillFeedback[editFormData.name].consensus) * 100).toFixed(0)}% agreement
+                            </span>
+                          </div>
+
+                          {/* Comparison with Self-Assessment */}
+                          {editFormData.level !== skillFeedback[editFormData.name].averageRating && (
+                            <div className="bg-amber-50 border border-amber-200 rounded p-2 text-sm">
+                              <span className="text-amber-800">
+                                ⚠️ Your self-assessment ({editFormData.level}) differs from peer average
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Recent Feedback Comments */}
+                          {skillFeedback[editFormData.name].comments && skillFeedback[editFormData.name].comments.length > 0 && (
+                            <div>
+                              <div className="text-xs font-semibold text-gray-700 mb-2">Recent Comments:</div>
+                              <div className="space-y-2">
+                                {skillFeedback[editFormData.name].comments.slice(0, 3).map((comment, idx) => (
+                                  <div key={idx} className="bg-white rounded p-2 text-xs border border-green-100">
+                                    <div className="font-medium text-gray-700 mb-1">
+                                      {comment.providerName} ({comment.relationship})
+                                    </div>
+                                    <div className="text-gray-600">"{comment.text}"</div>
+                                  </div>
+                                ))}
+                                {skillFeedback[editFormData.name].comments.length > 3 && (
+                                  <div className="text-xs text-gray-500 italic">
+                                    + {skillFeedback[editFormData.name].comments.length - 3} more comment{skillFeedback[editFormData.name].comments.length - 3 > 1 ? 's' : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
